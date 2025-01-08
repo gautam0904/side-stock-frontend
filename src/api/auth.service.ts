@@ -1,4 +1,4 @@
-import axiosInstance from './authIbstanse';
+import axiosInstance from './authInstanse';
 
 export const login = (username: string, password: string) => {
   return axiosInstance.post('/user/login', { name: username, password })

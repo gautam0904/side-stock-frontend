@@ -1,4 +1,4 @@
-import axiosInstance from './authIbstanse';
+import axiosInstance from './authInstanse';
 
 interface GetCustomersParams {
   page?: number;
