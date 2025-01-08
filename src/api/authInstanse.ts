@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { environment } from '../environments/enviroment.prod';
 
 const axiosInstance = axios.create({
   baseURL: environment.apiUrl,
