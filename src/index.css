@@ -52,6 +52,7 @@
 
 body {
   font-family: 'Arial', sans-serif;
+  font-size: 14px;
   background-color: var(--background-light);
   color: var(--text-dark);
   margin: 0;

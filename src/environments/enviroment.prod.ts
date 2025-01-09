@@ -1,3 +1,3 @@
 export const environment = {
-    apiUrl: 'https://side-stock-backend.onrender.com/api/v1'
+    apiUrl: 'http://localhost:3031/api/v1'
 }

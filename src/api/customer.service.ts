@@ -9,7 +9,7 @@ interface GetCustomersParams {
 }
 
 class CustomerService {
-  getAllCustomers(params: GetCustomersParams = {}) {
+  getAllCustomers(params: GetCustomersParams = {}, signal?: AbortSignal) {
     const {
       page = 1,
       limit = 10,
