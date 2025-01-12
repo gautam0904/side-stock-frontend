@@ -19,7 +19,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import Form from '../../components/form/form.component';
-import FormInput from '../../components/formInput/formInput.component';
+import { FormInput } from '../../components/formInput/formInput.component';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -47,8 +47,8 @@ const isScrollNearBottom = (element: HTMLElement, threshold: number = 0.8): bool
 
 const Dashboard = () => {
   const [open, setOpen] = useState(false);;
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [formData, setFormData] = useState({
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [formData, setFormData] = useState<Customer>({
     _id:'',
     GSTnumber: '',
     panCardNumber: '',
@@ -135,13 +135,13 @@ const Dashboard = () => {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: '80%',
+    width: '90%',
     maxWidth: '1200px',
     bgcolor: 'background.paper',
     boxShadow: 24,
     p: 4,
     borderRadius: 2,
-    maxHeight: '90vh',
+    maxHeight: '95vh',
     overflowY: 'auto'
   };
 
@@ -250,10 +250,14 @@ const Dashboard = () => {
     e.preventDefault();
     try {
       if (isEditMode) {
-        await customerService.updateCustomer(formData._id, formData);
+        const response = await customerService.updateCustomer(formData._id, formData);
+        setCustomers(prevData =>
+          prevData.map((item: Customer) => (item._id === formData._id ? response.data : item))
+        );
         toast.success('Customer updated successfully');
       } else {
-        await customerService.addCustomer(formData);
+        const response = await customerService.addCustomer(formData);
+        setCustomers(prevData => [...prevData, response.data]);
         toast.success('Customer added successfully');
       }
       handleClose();
@@ -274,6 +278,7 @@ const Dashboard = () => {
     try {
       await customerService.deleteCustomer(customerToDelete);
       toast.success('Customer deleted successfully');
+      setCustomers(prevData => prevData.filter((item: Customer) => item._id !== customerToDelete));
       fetchCustomers(1); 
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to delete customer');
@@ -312,7 +317,7 @@ const Dashboard = () => {
       <Button
         fullWidth
         variant="contained"
-        sx={{ mt: 3, mb: 2 }}
+        sx={{ bgcolor: '#7b4eff', color: 'white', mt: 3, mb: 2 }}
         onClick={handleOpen}
       >
         <PersonAddAltIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
@@ -450,7 +455,7 @@ const Dashboard = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="contained">
+              <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
                 {isEditMode ? 'Update Customer' : 'Save Customer'}
               </Button>
             </Box>

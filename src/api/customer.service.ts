@@ -44,7 +44,7 @@ class CustomerService {
   }
 
   updateCustomer(id: string, customerData: any) {
-    return axiosInstance.put(`/customer/update`, customerData)
+    return axiosInstance.put(`/customer/update/${id}`, customerData)
       .then(response => response.data)
       .catch(error => {
         console.error('Update customer error:', error);
