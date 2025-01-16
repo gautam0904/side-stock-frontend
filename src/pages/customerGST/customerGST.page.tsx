@@ -167,11 +167,18 @@ const Dashboard = () => {
 
       setCustomers(prev => {
         const updatedList = [...prev, ...customersWithNumbers];
-        if (updatedList.length > ITEMS_PER_PAGE * 2) {
-          return updatedList.slice(-ITEMS_PER_PAGE * 2);
+      
+        const uniqueCustomers = updatedList.filter((value, index, self) => 
+          index === self.findIndex((t) => t._id === value._id)
+        );
+      
+        if (uniqueCustomers.length > ITEMS_PER_PAGE * 2) {
+          return uniqueCustomers.slice(-ITEMS_PER_PAGE * 2);  // keep only the latest data
         }
-        return updatedList;
+      
+        return uniqueCustomers;
       });
+      
 
       setHasMore(newCustomers.length === ITEMS_PER_PAGE);
       setPage(pageNum);
@@ -506,7 +513,7 @@ const Dashboard = () => {
           loading={loading}
           checkboxSelection
           disableRowSelectionOnClick
-          getRowId={(row) => row.id || row._id}
+          getRowId={(row) => row._id }
           sx={{ 
             border: 0,
             '& .MuiDataGrid-virtualScroller': {
