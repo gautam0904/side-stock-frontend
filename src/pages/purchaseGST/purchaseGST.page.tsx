@@ -356,16 +356,16 @@ const PurchasesGST = () => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': '4ff236814d3317fdd0479ca80b1b4cd4' 
+          'apikey': '4ff236814d3317fdd0479ca80b1b4cd4'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch GST details');
       }
 
       const data = await response.json();
-      
+
       // Check if the API call was successful
       if (data && data.success) {
         return {
@@ -384,18 +384,18 @@ const PurchasesGST = () => {
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
+
     // Convert GST number to uppercase
     const processedValue = name === 'GSTnumber' ? value.toUpperCase() : value;
-    
+
     // Special handling for GST number
     if (name === 'GSTnumber' && processedValue.length === 15) {
       try {
         setLoading(true);
-        
+
         // Fetch GST details
         const gstDetails = await fetchGSTDetails(processedValue);
-        
+
         if (gstDetails) {
           // Check if the GST status is active
           if (gstDetails.status.toLowerCase() !== 'active') {
@@ -408,7 +408,7 @@ const PurchasesGST = () => {
             companyName: gstDetails.tradeName || gstDetails.legalName || '',
             supplierName: gstDetails.legalName || ''
           }));
-          
+
           toast.success('GST details fetched successfully');
         } else {
           toast.error('Could not fetch GST details');
@@ -419,7 +419,7 @@ const PurchasesGST = () => {
       } finally {
         setLoading(false);
       }
-      
+
       // Continue with existing GST number logic
       setFormData(prev => {
         const newFormData = {
@@ -430,7 +430,7 @@ const PurchasesGST = () => {
         if (processedValue.length >= 2) {
           const isHomeState = processedValue.startsWith('24');
           const currentGSTRate = Number(selectedGSTRate);
-          
+
           if (!iscustomGstRates) {
             const newSgst = isHomeState ? (prev.amount * (currentGSTRate / 2) / 100) : 0;
             const newCgst = isHomeState ? (prev.amount * (currentGSTRate / 2) / 100) : 0;
@@ -647,7 +647,7 @@ const PurchasesGST = () => {
 
     // Calculate dynamic rows per page
     const rowsPerPage = calculateRowsPerPage(tableData);
-    
+
     // Split data into pages using calculated rowsPerPage
     const pages = [];
     for (let i = 0; i < tableData.length; i += rowsPerPage) {
@@ -665,8 +665,8 @@ const PurchasesGST = () => {
         if (numericFields.includes(key)) {
           pageTotals[key] = pageData.reduce((sum, row) => {
             // Extract numeric value from the cell content
-            const value = typeof row[keys.indexOf(key)] === 'object' 
-              ? Number(row[keys.indexOf(key)].content) 
+            const value = typeof row[keys.indexOf(key)] === 'object'
+              ? Number(row[keys.indexOf(key)].content)
               : Number(row[keys.indexOf(key)]);
             return sum + (isNaN(value) ? 0 : value);
           }, 0);
@@ -680,8 +680,8 @@ const PurchasesGST = () => {
         body: pageData,
         foot: [[
           'Page Total',
-          ...keys.slice(1).map(key => 
-            numericFields.includes(key) ? { 
+          ...keys.slice(1).map(key =>
+            numericFields.includes(key) ? {
               content: pageTotals[key].toFixed(2),
               styles: { halign: 'right' }
             } : ''
@@ -725,7 +725,7 @@ const PurchasesGST = () => {
       doc.autoTable({
         head: [[
           'Grand Total',
-          ...keys.slice(1).map(key => 
+          ...keys.slice(1).map(key =>
             numericFields.includes(key) ? grandTotals[key].toFixed(2) : ''
           )
         ]],
@@ -745,7 +745,7 @@ const PurchasesGST = () => {
 
     // Add page numbers
     const pageCount = doc.getNumberOfPages();
-    for(let i = 1; i <= pageCount; i++) {
+    for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(10);
       doc.setTextColor(100);
@@ -797,7 +797,7 @@ const PurchasesGST = () => {
     setIsCustomGstRates(false);
     const numericValue = Number(value);
     const isHomeState = formData.GSTnumber.startsWith('24');
-    
+
     setGstRates({
       sgstRate: isHomeState ? numericValue / 2 : 0,
       cgstRate: isHomeState ? numericValue / 2 : 0,
@@ -988,13 +988,13 @@ const PurchasesGST = () => {
 
   // Modify the product input section in the form
   const productInput = (index: number, product: IProducts) => (
-    <Box sx={{ 
-      display: 'flex', 
-      gap: 2, 
+    <Box sx={{
+      display: 'flex',
+      gap: 2,
       alignItems: 'center',
       flexDirection: { xs: 'column', md: 'row' },
       width: '100%',
-      mb: 2 
+      mb: 2
     }}>
       <Box flex={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
         <StyledSelect
@@ -1012,8 +1012,8 @@ const PurchasesGST = () => {
             <em>Select Product</em>
           </MenuItem>
           {productOptions.map((option) => (
-            <MenuItem 
-              key={option.name} 
+            <MenuItem
+              key={option.name}
               value={option.name}
               sx={{
                 '&:hover': {
@@ -1042,8 +1042,8 @@ const PurchasesGST = () => {
           {productOptions
             .find(p => p.name === product.productName)
             ?.sizes.map((size) => (
-              <MenuItem 
-                key={size} 
+              <MenuItem
+                key={size}
                 value={size}
                 sx={{
                   '&:hover': {
@@ -1247,16 +1247,6 @@ const PurchasesGST = () => {
                       >
                         <Box flex={2}>
                           {productInput(index, product)}
-                        </Box>
-                        <Box flex={1}>
-                          <FormInput
-                            name={`products.${index}.size`}
-                            label="Size"
-                            type="text"
-                            value={product.size?.toString()}
-                            onChange={(e) => handleProductChange(index, 'size', e.target.value)}
-                            required
-                          />
                         </Box>
                         <Box flex={1}>
                           <FormInput

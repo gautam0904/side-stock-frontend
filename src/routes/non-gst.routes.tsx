@@ -5,7 +5,7 @@ import { Route } from 'react-router-dom';
 // const Challan = React.lazy(() => import('../pages/challan/challan.page'));
 // const Payment = React.lazy(() => import('../pages/payment/payment.page'));
 // const DirectBill = React.lazy(() => import('../pages/bill/bill.page'));
-const CustomerNonGST = React.lazy(() => import('../pages/customer/customer.page'));
+const Customer = React.lazy(() => import('../pages/customer/customer.page'));
 
 const nonGstRoutes = [
 
@@ -27,7 +27,7 @@ const nonGstRoutes = [
   <Route 
     key="customer-new"
     path="/customerNonGST/new" 
-    element={<CustomerNonGST />}
+    element={<Customer />}
   />
 ];
 
