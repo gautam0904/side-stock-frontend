@@ -35,7 +35,11 @@ class CustomerService {
   }
 
   addCustomer(customerData: any) {
-    return axiosInstance.post('/customer/create', customerData)
+    return axiosInstance.post('/customer/create', customerData , {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+    },
+    })
       .then(response => response.data)
       .catch(error => {
         console.error('Add customer error:', error);

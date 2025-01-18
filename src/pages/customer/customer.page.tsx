@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { customerService } from '../../api/customer.service'
 import { productService } from '../../api/product.service';
-import { ICutomer, Iprizefix, ISite } from 'src/DTO/customer.dto';
+import { Iprizefix, ISite } from 'src/DTO/customer.dto';
 import { toast } from 'react-hot-toast';
 import {
     Box,
@@ -27,7 +27,7 @@ import {
     TableContainer,
     Grid
 } from '@mui/material';
-import { DataGrid, GridColDef, GridRenderCellParams, GridFilterModel, GridLogicOperator } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRenderCellParams, GridFilterModel, GridLogicOperator, GridFilterItem } from '@mui/x-data-grid';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -46,6 +46,9 @@ import {
 } from '@mui/x-data-grid';
 import { SelectChangeEvent } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import PhotoIcon from '@mui/icons-material/Photo';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import PersonIcon from '@mui/icons-material/Person';
 
 declare module 'jspdf' {
     interface jsPDF {
@@ -64,6 +67,26 @@ const initialSite: ISite = {
     siteAddress: ''
 };
 
+interface ICutomer {
+    _id?: string;
+    customerName: string;
+    mobileNumber: string;
+    partnerName: string;
+    partnerMobileNumber: string;
+    reference: string;
+    referenceMobileNumber: string;
+    residentAddress: string;
+    aadharNo: string;
+    pancardNo: string;
+    GSTnumber: string;
+    aadharPhoto: File | string | null;
+    panCardPhoto: File | string | null;
+    customerPhoto: File | string | null;
+    prizefix: Iprizefix[];
+    sites: ISite[];
+    [key: string]: any;
+}
+
 const initialFormData: ICutomer = {
     customerName: '',
     mobileNumber: '',
@@ -75,11 +98,10 @@ const initialFormData: ICutomer = {
     aadharNo: '',
     pancardNo: '',
     GSTnumber: '',
-    aadharPhoto: '',
-    panCardPhoto: '',
-    customerPhoto: '',
+    aadharPhoto: null,
+    panCardPhoto: null,
+    customerPhoto: null,
     prizefix: [{
-        _id: '',
         size: '',
         productName: '',
         rate: 0,
@@ -143,7 +165,7 @@ const Customer = () => {
     });
     const gridRef = useRef<any>(null);
     const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
-    const [productOptions, setProductOptions] = useState<{ name: string; sizes: string[] }[]>([]);
+    const [productOptions, setProductOptions] = useState<Array<{ name: string, sizes: string[] }>>([]);
 
     const columns: GridColDef[] = [
         {
@@ -195,19 +217,18 @@ const Customer = () => {
     ];
 
     const handleProductChange = (index: number, field: keyof IProducts, value: any) => {
-        setFormData(prev => {
-            const newProducts = [...(prev.prizefix || [])];
-            const updatedProduct = {
-                ...newProducts[index],
-                [field]: value
-            };
+        setFormData(prev => ({
+            ...prev,
+            prizefix: prev.prizefix.map((item, i) =>
+                i === index ? { ...item, [field]: value } : item
+            )
+
 
             // // Immediately calculate amount when quantity or rate changes
             // if (field === 'quantity' || field === 'rate') {
             //     updatedProduct.amount = Number(updatedProduct.quantity || 0) * Number(updatedProduct.rate || 0);
             // }
 
-            newProducts[index] = updatedProduct;
 
             // Calculate totals
             // const subTotal = newProducts.reduce((sum, product) => sum + (Number(product.amount) || 0), 0);
@@ -219,29 +240,33 @@ const Customer = () => {
             // const cgst = (baseAmount * (gstRates.cgstRate / 100));
             // const igst = (baseAmount * (gstRates.igstRate / 100));
 
-            return {
-                ...prev,
-                products: newProducts,
-                // amount: baseAmount,
-                // sgst: sgst,
-                // cgst: cgst,
-                // igst: igst,
-                // totalAmount: baseAmount + (prev.GSTnumber.startsWith('24') ? (sgst + cgst) : igst)
-            };
-        });
+            // return {
+            //     ...prev,
+            //     products: newProducts,
+            // amount: baseAmount,
+            // sgst: sgst,
+            // cgst: cgst,
+            // igst: igst,
+            // totalAmount: baseAmount + (prev.GSTnumber.startsWith('24') ? (sgst + cgst) : igst)
+            // }
+        }));
     };
 
     const addProduct = () => {
         setFormData(prev => ({
             ...prev,
-            products: [...prev.prizefix || [], initialProduct]
+            prizefix: [...(prev.prizefix || []), {
+                productName: '',
+                size: '',
+                rate: 0
+            }]
         }));
     };
 
     const removeProduct = (index: number) => {
         setFormData(prev => ({
             ...prev,
-            products: prev.prizefix?.filter((_, i) => i !== index)
+            prizefix: prev.prizefix.filter((_, i) => i !== index)
         }));
     };
 
@@ -385,22 +410,66 @@ const Customer = () => {
         return undefined;
     };
 
+    const validateMobile = (field: string, value: string) => {
+        const mobilePattern = /^[6-9]\d{9}$/;
+        if (!value) return `${field} is required`;
+        if (!mobilePattern.test(value)) return 'Invalid Mobile Number';
+        return undefined;
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (loading) return;
+
         try {
             setLoading(true);
-            if (isEditMode && formData._id) {
-                await customerService.updateCustomer(formData._id, formData);
-                toast.success('Purchase updated successfully');
-            } else {
-                await customerService.addCustomer(formData);
-                toast.success('Purchase added successfully');
+            const formDataToSend = new FormData();
+            if (formData.aadharPhoto instanceof File) {
+                formDataToSend.append('aadharPhoto', formData.aadharPhoto);
             }
+            if (formData.panCardPhoto instanceof File) {
+                formDataToSend.append('panCardPhoto', formData.panCardPhoto);
+            }
+            if (formData.customerPhoto instanceof File) {
+                formDataToSend.append('customerPhoto', formData.customerPhoto);
+            }
+
+            // Create a clean object without the file fields
+            const cleanData = {
+                ...formData,
+                aadharPhoto: undefined,
+                panCardPhoto: undefined,
+                customerPhoto: undefined
+            };
+
+            // // Append all non-file fields
+            Object.keys(formData).forEach(key => {
+                const value = formData[key as keyof ICutomer];
+                console.log(key);
+                if (key === 'prizefix' || key === 'sites') {
+                    console.log(formData[key]);
+
+                    const value = formData[key];
+                    if (Array.isArray(value)) {
+                        formDataToSend.append(key, JSON.stringify(value));
+                    }
+                } else {
+                    formDataToSend.append(key, String(value));
+                }
+            });
+
+            if (isEditMode && formData._id) {
+                await customerService.updateCustomer(formData._id, formDataToSend);
+                toast.success('Customer updated successfully');
+            } else {
+                await customerService.addCustomer(formDataToSend);
+                toast.success('Customer added successfully');
+            }
+
             handleClose();
             setShouldFetch(true);
         } catch (error: any) {
-            toast.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} purchase`);
+            toast.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} customer`);
         } finally {
             setLoading(false);
         }
@@ -727,11 +796,10 @@ const Customer = () => {
                 maxWidth="md"
                 fullWidth
             >
-                <DialogTitle>Cusrtomer Details</DialogTitle>
+                <DialogTitle>Customer Details</DialogTitle>
                 <DialogContent>
-                    {/* Basic Info */}
                     <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" gutterBottom>Information</Typography>
+
                         <Grid container spacing={2}>
                             <Grid item xs={6}>
                                 <Typography variant="body2" color="textSecondary">GST Number:</Typography>
@@ -820,6 +888,58 @@ const Customer = () => {
                                 </TableBody>
                             </Table>
                         </TableContainer>
+                    </Box>
+                    {/* images */}
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" gutterBottom>Documents & Photos</Typography>
+                        {selectedCustomer.aadharPhoto && (
+                            <Grid item xs={12} md={4}>
+                                <Typography variant="body2" color="textSecondary">Aadhar Card:</Typography>
+                                <Box
+                                    component="img"
+                                    src={typeof selectedCustomer.aadharPhoto === 'string' ? selectedCustomer.aadharPhoto : ''}
+                                    alt="Customer Photo"
+                                    sx={{
+                                        width: '100%',
+                                        height: 200,
+                                        objectFit: 'cover',
+                                        borderRadius: 1
+                                    }}
+                                />
+                            </Grid>
+                        )}
+                        {selectedCustomer.panCardPhoto && (
+                            <Grid item xs={12} md={4}>
+                                <Typography variant="body2" color="textSecondary">Pan Card Card:</Typography>
+                                <Box
+                                    component="img"
+                                    src={typeof selectedCustomer.panCardPhoto === 'string' ? selectedCustomer.panCardPhoto : ''}
+                                    alt="Pancard Photo"
+                                    sx={{
+                                        width: '100%',
+                                        height: 200,
+                                        objectFit: 'cover',
+                                        borderRadius: 1
+                                    }}
+                                />
+                            </Grid>
+                        )}
+                        {selectedCustomer.customerPhoto && (
+                            <Grid item xs={12} md={4}>
+                                <Typography variant="body2" color="textSecondary">Customer Card:</Typography>
+                                <Box
+                                    component="img"
+                                    src={typeof selectedCustomer.customerPhoto === 'string' ? selectedCustomer.customerPhoto : ''}
+                                    alt="Customer Photo"
+                                    sx={{
+                                        width: '100%',
+                                        height: 200,
+                                        objectFit: 'cover',
+                                        borderRadius: 1
+                                    }}
+                                />
+                            </Grid>
+                        )}
                     </Box>
                 </DialogContent>
                 <DialogActions>
@@ -940,14 +1060,12 @@ const Customer = () => {
             {
                 label: 'contains',
                 value: 'contains',
-                getApplyFilterFn: (filterItem: any) => {
-                    if (!filterItem.value) {
-                        return null;
-                    }
-                    return (params: any) => {
-                        const cellValue = params.value?.toString().toLowerCase() || '';
-                        const filterValue = filterItem.value.toString().toLowerCase() || '';
-                        return cellValue.includes(filterValue);
+                getApplyFilterFn: (filterItem: GridFilterItem) => {
+                    if (!filterItem.value) return null;
+                    return ({ value }: { value: any }) => {
+                        const cellValue = (value?.toString() || '').toLowerCase();
+                        const searchValue = (filterItem.value?.toString() || '').toLowerCase();
+                        return cellValue.includes(searchValue);
                     };
                 },
             },
@@ -956,19 +1074,71 @@ const Customer = () => {
             {
                 label: 'contains',
                 value: 'contains',
-                getApplyFilterFn: (filterItem: any) => {
-                    if (!filterItem.value) {
-                        return null;
-                    }
-                    return (params: any) => {
-                        const cellValue = params.value?.toString() || '';
-                        const filterValue = filterItem.value.toString() || '';
-                        return cellValue.includes(filterValue);
+                getApplyFilterFn: (filterItem: GridFilterItem) => {
+                    if (!filterItem.value) return null;
+                    return ({ value }: { value: any }) => {
+                        const cellValue = (value?.toString() || '').toLowerCase();
+                        const searchValue = (filterItem.value?.toString() || '').toLowerCase();
+                        return cellValue.includes(searchValue);
                     };
                 },
             },
         ],
     };
+
+    // Add photo upload functionality
+    const handlePhotoUpload = async (field: 'aadharPhoto' | 'panCardPhoto' | 'customerPhoto', file: File) => {
+        try {
+            console.log('Uploading file:', field, file); // Debug log
+            setFormData(prev => ({
+                ...prev,
+                [field]: file
+            }));
+            toast.success(`${field} selected successfully`);
+        } catch (error) {
+            console.error('Photo upload error:', error);
+            toast.error(`Failed to process ${field}`);
+        }
+    };
+
+    // Photo upload buttons with proper icons
+    const PhotoUploadButton = ({ field, icon, label }: {
+        field: 'aadharPhoto' | 'panCardPhoto' | 'customerPhoto',
+        icon: React.ReactNode,
+        label: string
+    }) => (
+        <Box flex={1}>
+            <input
+                type="file"
+                accept="image/*"
+                id={`${field}-upload`}
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                        console.log('File selected:', field, file); // Debug log
+                        handlePhotoUpload(field, file);
+                    }
+                }}
+            />
+            <label htmlFor={`${field}-upload`}>
+                <Button
+                    component="span"
+                    startIcon={icon}
+                    sx={{
+                        mt: 2,
+                        bgcolor: '#7b4eff',
+                        color: 'white',
+                        '&:hover': {
+                            bgcolor: '#6a3dd9',
+                        }
+                    }}
+                >
+                    {label}
+                </Button>
+            </label>
+        </Box>
+    );
 
     return (
         <Box sx={{ p: 2 }}>
@@ -1023,10 +1193,10 @@ const Customer = () => {
                                     <FormInput
                                         name="mobileNumber"
                                         label="Mobile Number"
-                                        type="date"
                                         value={formData.mobileNumber}
                                         onChange={handleChange}
-                                        required
+                                        validate={validateMobile}
+                                        type="tel"
                                     />
                                 </Box>
                             </Stack>
@@ -1039,7 +1209,6 @@ const Customer = () => {
                                         label="Partner Name"
                                         value={formData.partnerName}
                                         onChange={handleChange}
-                                        required
                                     />
                                 </Box>
                                 <Box flex={1}>
@@ -1048,7 +1217,8 @@ const Customer = () => {
                                         label="Partner Mobile Number"
                                         value={formData.partnerMobileNumber}
                                         onChange={handleChange}
-                                        required
+                                        validate={validateMobile}
+                                        type="tel"
                                     />
                                 </Box>
                                 <Box flex={1}>
@@ -1077,11 +1247,51 @@ const Customer = () => {
                                     <FormInput
                                         name="referenceMobileNumber"
                                         label="Reference Mobile Number"
-                                        value={formData.partnerMobileNumber}
+                                        value={formData.referenceMobileNumber}
                                         onChange={handleChange}
-                                        required
+                                        validate={validateMobile}
+                                        type="tel"
                                     />
                                 </Box>
+                            </Stack>
+
+                            {/* 4 Row */}
+                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                                <Box flex={1}>
+                                    <FormInput
+                                        name="aadharNo"
+                                        label="Aadhar No"
+                                        value={formData.aadharNo}
+                                        onChange={handleChange}
+                                    />
+                                </Box>
+                                <Box flex={1}>
+                                    <FormInput
+                                        name="pancardNo"
+                                        label="Pan Card No"
+                                        value={formData.pancardNo}
+                                        onChange={handleChange}
+                                    />
+                                </Box>
+                            </Stack>
+
+                            {/* 5 Row */}
+                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                                <PhotoUploadButton
+                                    field="aadharPhoto"
+                                    icon={<CreditCardIcon />}
+                                    label="Aadhar Photo"
+                                />
+                                <PhotoUploadButton
+                                    field="panCardPhoto"
+                                    icon={<CreditCardIcon />}
+                                    label="Pan Card Photo"
+                                />
+                                <PhotoUploadButton
+                                    field="customerPhoto"
+                                    icon={<PersonIcon />}
+                                    label="Customer Photo"
+                                />
                             </Stack>
 
                             {/* Products Section */}
@@ -1123,22 +1333,20 @@ const Customer = () => {
                                                         required
                                                     />
                                                 </Box>
-                                                {formData.prizefix?.length || 0 > 1 && (
-                                                    <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-                                                        <IconButton
-                                                            onClick={() => removeProduct(index)}
-                                                            color="error"
-                                                            size="small"
-                                                            sx={{
-                                                                '&:hover': {
-                                                                    backgroundColor: 'error.lighter'
-                                                                }
-                                                            }}
-                                                        >
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Box>
-                                                )}
+                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+                                                    <IconButton
+                                                        onClick={() => removeProduct(index)}
+                                                        color="error"
+                                                        size="small"
+                                                        sx={{
+                                                            '&:hover': {
+                                                                backgroundColor: 'error.lighter'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
                                             </Stack>
                                         </Paper>
                                     ))}
@@ -1197,22 +1405,20 @@ const Customer = () => {
                                                         required
                                                     />
                                                 </Box>
-                                                {formData.sites?.length || 0  > 1 && (
-                                                    <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-                                                        <IconButton
-                                                            onClick={() => removeSite(index)}
-                                                            color="error"
-                                                            size="small"
-                                                            sx={{
-                                                                '&:hover': {
-                                                                    backgroundColor: 'error.lighter'
-                                                                }
-                                                            }}
-                                                        >
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Box>
-                                                )}
+                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+                                                    <IconButton
+                                                        onClick={() => removeSite(index)}
+                                                        color="error"
+                                                        size="small"
+                                                        sx={{
+                                                            '&:hover': {
+                                                                backgroundColor: 'error.lighter'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
                                             </Stack>
                                         </Paper>
                                     ))}
