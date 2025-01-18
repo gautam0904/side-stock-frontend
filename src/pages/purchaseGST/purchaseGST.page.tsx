@@ -684,8 +684,8 @@ const PurchasesGST = () => {
                   {product.productName}
                 </TableCell>
                 <TableCell align="right">{product.quantity}</TableCell>
-                <TableCell align="right">₹{product.rate.toFixed(2)}</TableCell>
-                <TableCell align="right">₹{product.amount.toFixed(2)}</TableCell>
+                <TableCell align="right">₹{product.rate?.toFixed(2)}</TableCell>
+                <TableCell align="right">₹{product.amount?.toFixed(2)}</TableCell>
               </TableRow>
             ))}
             <TableRow>
@@ -907,11 +907,7 @@ const PurchasesGST = () => {
   onChange={(e) => handleProductChange(index, 'productName', e.target.value)}
   required
 >
-  {products.
-  required
->
-  {pr
-map((p) => (
+  {products.map((p) => (
     <MenuItem key={p._id} value={p._id}>
       {`${p.productName} ${p.size}`}
     </MenuItem>
@@ -923,7 +919,7 @@ map((p) => (
                             name={`products.${index}.quantity`}
                             label="Quantity"
                             type="number"
-                            value={product.quantity.toString()}
+                            value={product.quantity?.toString()}
                             onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
                             required
                           />
@@ -933,7 +929,7 @@ map((p) => (
                             name={`products.${index}.rate`}
                             label="Rate"
                             type="number"
-                            value={product.rate.toString()}
+                            value={product.rate?.toString()}
                             onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
                             required
                           />
@@ -1170,8 +1166,8 @@ map((p) => (
                         {product.productName}
                       </TableCell>
                       <TableCell align="right">{product.quantity}</TableCell>
-                      <TableCell align="right">₹{product.rate.toFixed(2)}</TableCell>
-                      <TableCell align="right">₹{product.amount.toFixed(2)}</TableCell>
+                      <TableCell align="right">₹{product.rate?.toFixed(2)}</TableCell>
+                      <TableCell align="right">₹{product.amount?.toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
@@ -1187,7 +1183,7 @@ map((p) => (
             </Box>
           ) : null}
           // getDetailPanelHeight={() => 'auto'}
-          detailPanelExpandedRowIds={Array.from(expandedRows)}
+          // detailPanelExpandedRowIds={Array.from(expandedRows)}
         />
       </Paper>
     </Box>
