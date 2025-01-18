@@ -24,7 +24,9 @@ interface FormInputProps {
   autoFocus?: boolean;
   fullWidth?: boolean;
   sx?: React.CSSProperties | any;
-  disabled?: boolean; 
+  disabled?: boolean;
+  onClick?: (e: React.MouseEvent<HTMLInputElement>) => void;
+  InputProps?: React.ComponentProps<typeof TextField>['InputProps'];
 }
 
 export const FormInput: React.FC<FormInputProps> = ({
@@ -45,7 +47,9 @@ export const FormInput: React.FC<FormInputProps> = ({
   autoFocus = false,
   fullWidth = true,
   sx,
-  disabled = false
+  disabled = false,
+  InputProps,
+  onClick
 }) => {
   const [error, setError] = React.useState<string | undefined>();
 
@@ -143,8 +147,12 @@ export const FormInput: React.FC<FormInputProps> = ({
           {label}
           {required && <span className="required-star">*</span>}
         </label>
-      </div>
+        <label htmlFor={name} className="floating-label">
       {error && <span className="error-message">{error}</span>}
+          {label}
+          {required && <span className="required-star">*</span>}
+        </label>
+      </div>
     </div>
   );
 };

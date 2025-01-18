@@ -61,8 +61,6 @@ interface ICustomerNonGST {
     _id?: string;
     customerName: string;
     mobileNumber: string;
-    siteName: string;
-    siteAddress: string;
     partnerName: string;
     partnerNumber: string;
     reference: string;
@@ -74,6 +72,7 @@ interface ICustomerNonGST {
     customerPhoto: string;
     residentAddress: string;
     products: IProducts[];
+    sites: Isite[];
 }
 
 const initialProduct: IProducts = {
@@ -82,11 +81,19 @@ const initialProduct: IProducts = {
     rate: 0,
 };
 
+const initialSite: Isite = {
+    siteName: '',
+    siteAddress : ''
+};
+
+interface Isite {
+    siteName: string;
+    siteAddress: string;
+}
+
 const initialFormData: ICustomerNonGST = {
     customerName: '',
     mobileNumber: '',
-    siteName: '',
-    siteAddress: '',
     partnerName: '',
     partnerNumber: '',
     reference: '',
@@ -97,6 +104,10 @@ const initialFormData: ICustomerNonGST = {
     panCardPhoto: '',
     customerPhoto: '',
     residentAddress: '',
+    sites: [{
+        siteName: '',
+        siteAddress: '',
+    }],
     products: [{
         _id: '',
         size: '',
@@ -200,11 +211,24 @@ const CustomerNonGST = () => {
             products: [...prev.products, initialProduct]
         }));
     };
+    const addSite = () => {
+        setFormData(prev => ({
+            ...prev,
+            sites: [...prev.sites, initialSite]
+        }));
+    };
 
     const removeProduct = (index: number) => {
         setFormData(prev => ({
             ...prev,
             products: prev.products.filter((_, i) => i !== index)
+        }));
+    };
+
+    const removeSite = (index: number) => {
+        setFormData(prev => ({
+            ...prev,
+            sites: prev.sites.filter((_, i) => i !== index)
         }));
     };
 
@@ -351,8 +375,6 @@ const CustomerNonGST = () => {
             c.mobileNumber,
             c.aadhar,
             c.panCard,
-            c.siteName,
-            c.siteAddress,
             c.reference,
             // Add more fields as needed
         ]);
@@ -581,7 +603,7 @@ const CustomerNonGST = () => {
                                     {product.productName}
                                 </TableCell>
                                 <TableCell align="right">{product.quantity}</TableCell>
-                                <TableCell align="right">₹{product.rate.toFixed(2)}</TableCell>
+                                <TableCell align="right">₹{product.rate?.toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -672,28 +694,11 @@ const CustomerNonGST = () => {
                                         required
                                     />
                                 </Box>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="siteName"
-                                        label="Site Name"
-                                        value={formData.siteName}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </Box>
                             </Stack>
 
                             {/* Second Row */}
                             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="siteAddress"
-                                        label="Site Address"
-                                        value={formData.siteAddress}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </Box>
+
                                 <Box flex={1}>
                                     <FormInput
                                         name="partnerName"
@@ -776,6 +781,52 @@ const CustomerNonGST = () => {
                                 </Box>
                             </Stack>
 
+                            {/* sites Section */}
+                            <Box sx={{ mt: 3 }}>
+                                <Typography variant="h6" sx={{ mb: 2 }}>Sites</Typography>
+                                <Stack spacing={2}>
+                                    {formData.sites.map((site, index) => (
+                                        <Paper key={index} sx={{ p: 2 }}>
+                                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+                                                <Box flex={1}>
+                                                    <FormInput
+                                                        name="siteAddress"
+                                                        label="Site Address"
+                                                        value={site.siteAddress}
+                                                        onChange={handleChange}
+                                                        required
+                                                    />
+                                                </Box>
+
+                                                <Box flex={1}>
+                                                    <FormInput
+                                                        name="siteName"
+                                                        label="Site Name"
+                                                        value={site.siteName}
+                                                        onChange={handleChange}
+                                                        required
+                                                    />
+                                                </Box>
+                                                {formData.sites.length > 1 && (
+                                                    <IconButton onClick={() => removeSite(index)} color="error">
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                )}
+                                            </Stack>
+                                        </Paper>
+                                    ))}
+                                </Stack>
+                                <Button
+                                    onClick={addSite}
+                                    color='success'
+                                    variant='outlined'
+                                    startIcon={<AddIcon />}
+                                    sx={{ mt: 2 }}
+                                >
+                                    Add Site
+                                </Button>
+                            </Box>
+
                             {/* Products Section */}
                             <Box sx={{ mt: 3 }}>
                                 <Typography variant="h6" sx={{ mb: 2 }}>Products</Typography>
@@ -804,7 +855,7 @@ const CustomerNonGST = () => {
                                                         name={`products.${index}.rate`}
                                                         label="Rate"
                                                         type="number"
-                                                        value={product.rate.toString()}
+                                                        value={product.rate?.toString()}
                                                     />
                                                 </Box>
                                                 <Box flex={1}>
@@ -823,6 +874,8 @@ const CustomerNonGST = () => {
                                 </Stack>
                                 <Button
                                     onClick={addProduct}
+                                    color='success'
+                                    variant='outlined'
                                     startIcon={<AddIcon />}
                                     sx={{ mt: 2 }}
                                 >
@@ -895,7 +948,7 @@ const CustomerNonGST = () => {
                                             {product.productName}
                                         </TableCell>
                                         <TableCell align="right">{product.size}</TableCell>
-                                        <TableCell align="right">₹{product.rate.toFixed(2)}</TableCell>
+                                        <TableCell align="right">₹{product.rate?.toFixed(2)}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -993,7 +1046,7 @@ const CustomerNonGST = () => {
                                                 {product.productName}
                                             </TableCell>
                                             <TableCell align="right">{product.productName}</TableCell>
-                                            <TableCell align="right">₹{product.rate.toFixed(2)}</TableCell>
+                                            <TableCell align="right">₹{product.rate?.toFixed(2)}</TableCell>
                                             <TableCell align="right">₹{product.size}</TableCell>
                                         </TableRow>
                                     ))}
