@@ -1,48 +1,78 @@
-import * as React from 'react';
+import React from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import Menu from '@mui/material/Menu';
 import MenuIcon from '@mui/icons-material/Menu';
 import Container from '@mui/material/Container';
-import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
-import MenuItem from '@mui/material/MenuItem';
-import AdbIcon from '@mui/icons-material/Adb';
 import StoreIcon from '@mui/icons-material/Store';
 import CategoryIcon from '@mui/icons-material/Category';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import Divider from '@mui/material/Divider';
-import UploadIcon from '@mui/icons-material/Upload'; 
+import UploadIcon from '@mui/icons-material/Upload';
 import { useAuth } from '../../contexts/auth.contexts';
 import PercentIcon from '@mui/icons-material/Percent';
 import DoNotDisturbAltIcon from '@mui/icons-material/DoNotDisturbAlt';
+import { GstContext } from '../../contexts/gst.contexts';
+import { useSidebar } from '../../contexts/sidebar.context';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import CssBaseline from '@mui/material/CssBaseline';
+import { useNavigate } from 'react-router-dom';
+import ProductionQuantityLimitsIcon from '@mui/icons-material/ProductionQuantityLimits';
 
-const settings = ['Profile', 'Account', 'Dashboard', 'Logout'];
+interface Props {
+  /**
+   * Injected by the documentation to work in an iframe.
+   * You won't need it on your project.
+   */
+  window?: () => Window;
+}
 
-const gstMenuItems = [
-  { key: 'stocks&reports', text: 'Stocks & Reports', icon: ReceiptIcon },
-  { key: 'add-sale', text: 'Add Sale', icon: CategoryIcon },
-  { key: 'add-purchase', text: 'Add Purchase', icon: StoreIcon },
-  { key: 'add-new-customer', text: 'Add New Customer', icon: PersonAddAltIcon },
-];
+const drawerWidth = 240;
 
-const nonGstMenuItems = [
-  { key: 'stocks&price', text: 'Stocks & Price', icon: ReceiptIcon },
-  { key: 'challan', text: 'Challan', icon: StoreIcon },
-  { key: 'payment', text: 'Payment', icon: CategoryIcon },
-  { key: 'direct-bill', text: 'Direct Bill', icon: PersonAddAltIcon },
-];
-
-function ResponsiveAppBar() {
+const Navbar: React.FC<Props> = (props) => {
+  const { window } = props;
+  const [mobileOpen, setMobileOpen] = React.useState(false);
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
-  const [isNonGST, setIsNonGST] = React.useState(false);  // New state to handle GST/Non-GST toggle
-  
+  const { isNonGST, setIsNonGST } = React.useContext(GstContext);
+  const { isOpen, setIsOpen } = useSidebar();
+  const { isAuthenticated } = useAuth();
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+    setIsOpen(!isOpen);
+  };
+
+  const container = window !== undefined ? () => window().document.body : undefined;
+
+  const settings = ['Profile', 'Account', 'Dashboard', 'Logout'];
+
+  const gstMenuItems = [
+    { key: 'stocks&reports', text: 'Stocks & Reports', icon: ReceiptIcon, path: '/stocks' },
+    { key: 'add-sale', text: 'Add Sale', icon: CategoryIcon, path: '/sales/new' },
+    { key: 'add-purchase', text: 'Add Purchase', icon: StoreIcon, path: '/purchasesGST/new' },
+    { key: 'add-new-customer', text: 'Add New Customer', icon: PersonAddAltIcon, path: '/customersGST/new' },
+  ];
+
+  const nonGstMenuItems = [
+    { key: 'stocks&price', text: 'Stocks & Price', icon: ReceiptIcon, path: '/stocks' },
+    { key: 'challan', text: 'Challan', icon: StoreIcon, path: '/challan' },
+    { key: 'payment', text: 'Payment', icon: CategoryIcon, path: '/payment' },
+    { key: 'direct-bill', text: 'Direct Bill', icon: PersonAddAltIcon, path: '/bill/new' },
+    { key: 'customer-new', text: 'Add Customer', icon: PersonAddAltIcon, path: '/customerNonGST/new' },
+  ];
+
+  const handleToggleGST = () => {
+    setIsNonGST(!isNonGST);
+  };
+
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
   };
@@ -59,329 +89,207 @@ function ResponsiveAppBar() {
     setAnchorElUser(null);
   };
 
-  const handleToggleGST = () => {
-    setIsNonGST(!isNonGST);
+  const navigate = useNavigate();
+
+  const handleMenuClick = (key: string, path: string) => {
+    navigate(path);
   };
 
-  const handleMenuClick = (key: string) => {
-    console.log(key);
+  const handleProductClick = () => {
+    navigate('/products');
   };
 
-  const { isAuthenticated } = useAuth();
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      // Create FormData to handle multiple files
+      const formData = new FormData();
+      Array.from(files).forEach((file, index) => {
+        formData.append(`file${index}`, file);
+      });
+
+      // TODO: Add your upload API call here
+      console.log('Uploading files:', formData);
+    }
+  };
 
   if (!isAuthenticated) {
     return null; // Don't render navbar for non-authenticated users
   }
 
-  const menuItems = isNonGST ? nonGstMenuItems : gstMenuItems;
+  const menuItems = isNonGST ? gstMenuItems : nonGstMenuItems;
+  const sideMenuItems = isNonGST ? nonGstMenuItems : gstMenuItems;
+
+  const drawer = (
+    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center', }}>
+      <Typography variant="h6" sx={{ my: 2 }}>
+        SP
+      </Typography>
+      <Divider />
+      <Box sx={{ display: 'block', alignItems: 'center', flexGrow: 1 }}>
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          style={{ display: 'none' }}
+          id="upload-files"
+          onChange={handleFileUpload}
+        />
+        <label htmlFor="upload-files">
+          <Button
+            component="span"
+            sx={{ color: 'inherit', ml: 2 }}
+          >
+            <UploadIcon sx={{ mr: 1 }} />
+            Upload
+          </Button>
+        </label>
+
+
+        <Button
+          sx={{
+            bgcolor: '#7b4eff',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            px: 2,
+            borderRadius: '4px',
+            width: '100%'
+          }}
+          onClick={() => handleProductClick()}
+        >
+          <ProductionQuantityLimitsIcon sx={{ mr: 1 }} />
+          Products
+        </Button>
+      </Box>
+      <Divider />
+
+      <List>
+        {sideMenuItems.map((item, index) => (
+          <ListItem key={item.key} disablePadding>
+            <ListItemButton sx={{ textAlign: 'center' }}>
+              <Button
+                sx={{
+                  bgcolor: '#7b4eff',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  px: 2,
+                  borderRadius: '4px',
+                  width: '100%'
+                }}
+                onClick={() => handleMenuClick(item.key, item.path)}
+              >
+                <item.icon sx={{ mr: 1 }} />
+                {item.text}
+              </Button>
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+      <Divider />
+
+      <List sx={{ display: { xs: 'none', md: 'none', sm: 'block' }, alignItems: 'center', flexGrow: 1 }}>
+        {menuItems.map((item, index) => (
+          <ListItem key={item.key} disablePadding>
+            <ListItemButton sx={{ textAlign: 'center' }}>
+              <Button
+                sx={{
+                  bgcolor: '#7b4eff',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  px: 2,
+                  borderRadius: '4px',
+                  width: '100%'
+                }}
+                onClick={() => handleMenuClick(item.key, item.path)}
+              >
+                <item.icon sx={{ mr: 1 }} />
+                {item.text}
+              </Button>
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
 
   return (
-    <AppBar position="static">
-      <Container maxWidth="xl">
-        <Toolbar disableGutters>
-          <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+    <Box sx={{ display: 'flex', bgcolor: 'white' }}>
+      <CssBaseline />
+      <AppBar position="fixed" sx={{ bgcolor: 'white' }}>
+        <Container maxWidth="xl">
+          <Toolbar disableGutters>
 
-          <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', flexGrow: 1 }}>
-            <IconButton
-              size="large"
-              onClick={handleOpenNavMenu}
-              color="inherit"
-            >
-              <MenuIcon />
-            </IconButton>
-            <Button
-              sx={{ color: 'white', ml: 2 }}
-              onClick={handleToggleGST}
-            >
-              <UploadIcon sx={{ mr: 1 }} />
-              Upload
-            </Button>
-          </Box>
+            <Toolbar>
+              <IconButton
+                sx={{ bgcolor: '#7b4eff', borderRadius: '50%', width: '40px', height: '40px', flexGrow: 1, display: { xs: 'flex', sm: 'flex', alignItems: 'center' } }}
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={handleDrawerToggle}
+              >
+                <MenuIcon />
+              </IconButton>
+            </Toolbar>
 
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center', gap: 1 }}>
-            {menuItems.map((item, index) => (
-              <React.Fragment key={item.key}>
-                <Button
-                  sx={{ color: 'white', display: 'flex', alignItems: 'center', px: 2 }}
-                  onClick={() => handleMenuClick(item.key)}
-                >
-                  <item.icon sx={{ mr: 1 }} />
-                  {item.text}
-                </Button>
-                {index < menuItems.length - 1 && (
-                  <Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255,255,255,0.3)' }} />
-                )}
-              </React.Fragment>
-            ))}
-          </Box>
-
-          {/* Right Section (Upload button in mobile, Sidebar in Desktop) */}
-          <Box sx={{ flexGrow: 0, display: { xs: 'none', md: 'flex' } }}>
-            <Button
-              sx={{ color: 'white', display: 'flex', alignItems: 'center', px: 2 }}
-              onClick={() => handleMenuClick('upload')}
-            >
-              
-                {isNonGST ? <PercentIcon sx={{ mr: 1 }} />: <DoNotDisturbAltIcon sx={{ mr: 1 }} />  }
-                {isNonGST ? 'GST' : 'Non-GST'}
-            </Button>
-          </Box>
-          
-          {/* Avatar Icon on Right */}
-          <Box sx={{ flexGrow: 0 }}>
-            <Menu
-              sx={{ mt: '45px' }}
-              id="menu-appbar"
-              anchorEl={anchorElUser}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              open={Boolean(anchorElUser)}
-              onClose={handleCloseUserMenu}
-            >
-              {settings.map((setting) => (
-                <MenuItem key={setting} onClick={handleCloseUserMenu}>
-                  <Typography sx={{ textAlign: 'center' }}>{setting}</Typography>
-                </MenuItem>
+            <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center', gap: 1 }}>
+              {menuItems.map((item, index) => (
+                <React.Fragment key={item.key}>
+                  <Button
+                    sx={{ bgcolor: '#7b4eff', color: 'white', display: 'flex', alignItems: 'center', px: 2 }}
+                    onClick={() => handleMenuClick(item.key, item.path)}
+                  >
+                    <item.icon sx={{ mr: 1 }} />
+                    {item.text}
+                  </Button>
+                  {index < menuItems.length - 1 && (
+                    <Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255,255,255,0.3)' }} />
+                  )}
+                </React.Fragment>
               ))}
-            </Menu>
-          </Box>
-        </Toolbar>
-      </Container>
-    </AppBar>
+            </Box>
+
+            <Box sx={{ bgcolor: 'white', flexGrow: 0, display: { xs: 'none', md: 'flex' } }}>
+              <Button
+                sx={{
+                  borderRadius: '4px',
+                  bgcolor: '#7b4eff',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  px: 2,
+
+                }}
+                onClick={handleToggleGST}
+              >
+                {isNonGST ? <DoNotDisturbAltIcon sx={{ mr: 1 }} /> : <PercentIcon sx={{ mr: 1 }} />}
+                {isNonGST ? 'Non-GST' : 'GST'}
+              </Button>
+            </Box>
+          </Toolbar>
+        </Container>
+      </AppBar>
+      <nav>
+        <Drawer
+          container={container}
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: false, // Better open performance on mobile.
+          }}
+          sx={{
+            display: { xs: 'block', sm: 'block' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          }}
+        >
+          {drawer}
+        </Drawer>
+      </nav>
+    </Box>
   );
-}
+};
 
-export default ResponsiveAppBar;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import * as React from 'react';
-// import AppBar from '@mui/material/AppBar';
-// import Box from '@mui/material/Box';
-// import Toolbar from '@mui/material/Toolbar';
-// import IconButton from '@mui/material/IconButton';
-// import Typography from '@mui/material/Typography';
-// import Menu from '@mui/material/Menu';
-// import MenuIcon from '@mui/icons-material/Menu';
-// import Container from '@mui/material/Container';
-// import Avatar from '@mui/material/Avatar';
-// import Button from '@mui/material/Button';
-// import Tooltip from '@mui/material/Tooltip';
-// import MenuItem from '@mui/material/MenuItem';
-// import AdbIcon from '@mui/icons-material/Adb';
-// import { useAuth } from '../../contexts/auth.contexts';
-// import StoreIcon from '@mui/icons-material/Store';
-// import CategoryIcon from '@mui/icons-material/Category';
-// import ReceiptIcon from '@mui/icons-material/Receipt';
-// import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
-// import Divider from '@mui/material/Divider';
-
-// const settings = ['Profile', 'Account', 'Dashboard', 'Logout'];
-
-// // Define menu items array at the top level
-// const menuItems = [
-//   { key: 'stocks&reports', text: 'Stocks & Reports', icon: ReceiptIcon },
-//   { key: 'add-sale', text: 'Add Sale', icon: CategoryIcon },
-//   { key: 'add-purchase', text: 'Add Purchase', icon: StoreIcon },
-//   { key: 'add-new-customer', text: 'Add New Customer', icon: PersonAddAltIcon },
-// ];
-
-// function ResponsiveAppBar() {
-//   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
-//   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
-
-//   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
-//     setAnchorElNav(event.currentTarget);
-//   };
-//   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-//     setAnchorElUser(event.currentTarget);
-//   };
-
-//   const handleCloseNavMenu = () => {
-//     setAnchorElNav(null);
-//   };
-
-//   const handleCloseUserMenu = () => {
-//     setAnchorElUser(null);
-//   };
-
-//   const handleMenuClick = (key: string) => {
-//     console.log(key);
-//   };
-
-//   const { isAuthenticated } = useAuth();
-
-//   if (!isAuthenticated) {
-//     return null; // Don't render navbar for non-authenticated users
-//   }
-
-//   return (
-//     <AppBar position="static">
-//       <Container maxWidth="xl">
-//         <Toolbar disableGutters>
-//           <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-
-//           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-//             <IconButton
-//               size="large"
-//               onClick={handleOpenNavMenu}
-//               color="inherit"
-//             >
-//               <MenuIcon />
-//             </IconButton>
-//             <Menu
-//               id="menu-appbar"
-//               anchorEl={anchorElNav}
-//               anchorOrigin={{
-//                 vertical: 'bottom',
-//                 horizontal: 'left',
-//               }}
-//               keepMounted
-//               transformOrigin={{
-//                 vertical: 'top',
-//                 horizontal: 'left',
-//               }}
-//               open={Boolean(anchorElNav)}
-//               onClose={handleCloseNavMenu}
-//               sx={{ display: { xs: 'block', md: 'none' } }}
-//             >
-//               {menuItems.map((item) => (
-//                 <MenuItem 
-//                   key={item.key} 
-//                   onClick={() => {
-//                     handleMenuClick(item.key);
-//                     handleCloseNavMenu();
-//                   }}
-//                 >
-//                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-//                     <item.icon sx={{ mr: 1 }} />
-//                     <Typography>{item.text}</Typography>
-//                   </Box>
-//                 </MenuItem>
-//               ))}
-//             </Menu>
-//           </Box>
-//           <AdbIcon sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }} />
-//           <Typography
-//             variant="h5"
-//             noWrap
-//             component="a"
-//             href="#app-bar-with-responsive-menu"
-//             sx={{
-//               mr: 2,
-//               display: { xs: 'flex', md: 'none' },
-//               flexGrow: 1,
-//               fontFamily: 'monospace',
-//               fontWeight: 700,
-//               letterSpacing: '.3rem',
-//               color: 'inherit',
-//               textDecoration: 'none',
-//             }}
-//           >
-//             LOGO
-//           </Typography>
-
-//           {/* Desktop Menu */}
-//           <Box sx={{ 
-//             flexGrow: 1, 
-//             display: { xs: 'none', md: 'flex' },
-//             justifyContent: 'center',
-//             gap: 1
-//           }}>
-//             {menuItems.map((item, index) => (
-//               <React.Fragment key={item.key}>
-//                 <Button
-//                   sx={{ 
-//                     color: 'white',
-//                     display: 'flex',
-//                     alignItems: 'center',
-//                     px: 2
-//                   }}
-//                   onClick={() => handleMenuClick(item.key)}
-//                 >
-//                   <item.icon sx={{ mr: 1 }} />
-//                   {item.text}
-//                 </Button>
-//                 {index < menuItems.length - 1 && (
-//                   <Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255,255,255,0.3)' }} />
-//                 )}
-//               </React.Fragment>
-//             ))}
-//           </Box>
-
-//           <Box sx={{ flexGrow: 0 }}>
-//             <Tooltip title="Open settings">
-//               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-//                 <Avatar alt="Remy Sharp" src="/static/images/avatar/2.jpg" />
-//               </IconButton>
-//             </Tooltip>
-//             <Menu
-//               sx={{ mt: '45px' }}
-//               id="menu-appbar"
-//               anchorEl={anchorElUser}
-//               anchorOrigin={{
-//                 vertical: 'top',
-//                 horizontal: 'right',
-//               }}
-//               keepMounted
-//               transformOrigin={{
-//                 vertical: 'top',
-//                 horizontal: 'right',
-//               }}
-//               open={Boolean(anchorElUser)}
-//               onClose={handleCloseUserMenu}
-//             >
-//               {settings.map((setting) => (
-//                 <MenuItem key={setting} onClick={handleCloseUserMenu}>
-//                   <Typography sx={{ textAlign: 'center' }}>{setting}</Typography>
-//                 </MenuItem>
-//               ))}
-//             </Menu>
-//           </Box>
-//         </Toolbar>
-//       </Container>
-//     </AppBar>
-//   );
-// }
-// export default ResponsiveAppBar;
+export default React.memo(Navbar);
