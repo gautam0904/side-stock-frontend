@@ -420,7 +420,6 @@ const Customer = () => {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (loading) return;
-
         try {
             setLoading(true);
             const formDataToSend = new FormData();
@@ -433,8 +432,6 @@ const Customer = () => {
             if (formData.customerPhoto instanceof File) {
                 formDataToSend.append('customerPhoto', formData.customerPhoto);
             }
-
-            // Create a clean object without the file fields
             const cleanData = {
                 ...formData,
                 aadharPhoto: undefined,
@@ -442,7 +439,6 @@ const Customer = () => {
                 customerPhoto: undefined
             };
 
-            // // Append all non-file fields
             Object.keys(formData).forEach(key => {
                 const value = formData[key as keyof ICutomer];
                 console.log(key);
@@ -465,7 +461,6 @@ const Customer = () => {
                 await customerService.addCustomer(formDataToSend);
                 toast.success('Customer added successfully');
             }
-
             handleClose();
             setShouldFetch(true);
         } catch (error: any) {
