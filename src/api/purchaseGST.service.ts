@@ -2,8 +2,6 @@ import axiosInstance from './authInstanse';
 import { AxiosResponse } from 'axios';
 
 interface GetCustomersParams {
-  page?: number;
-  limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   search?: string;
@@ -38,8 +36,6 @@ class PurchaseService {
 
   getAllPurchases(params: GetCustomersParams = {}, signal?: AbortSignal) {
     const {
-      page = 1,
-      limit = 10,
       sortBy = 'createdAt',
       sortOrder = 'desc',
       search = ''
@@ -50,8 +46,6 @@ class PurchaseService {
     return this.debounceRequest(requestKey, () =>
       axiosInstance.get('/purchase/get', {
         params: {
-          page,
-          limit,
           sortBy,
           sortOrder,
           search
