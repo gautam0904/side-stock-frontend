@@ -1264,6 +1264,7 @@ const PurchasesGST = () => {
                             label="Quantity"
                             type="number"
                             value={product.quantity?.toString()}
+                            value={product.quantity?.toString()}
                             onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
                             required
                           />
@@ -1273,6 +1274,7 @@ const PurchasesGST = () => {
                             name={`products.${index}.rate`}
                             label="Rate"
                             type="number"
+                            value={product.rate?.toString()}
                             value={product.rate?.toString()}
                             onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
                             required
