@@ -13,6 +13,8 @@ import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import ProductionQuantityLimitsIcon from '@mui/icons-material/ProductionQuantityLimits';
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -22,7 +24,8 @@ const Dashboard: React.FC = () => {
     totalProducts: 0,
     rentedItems: 0,
     lowStock: 0,
-    lostItems: 0
+    lostItems: 0,
+    totalItems: 0,
   });
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieChartData, setPieChartData] = useState<any[]>([]);
@@ -37,13 +40,16 @@ const Dashboard: React.FC = () => {
         const totalStock = products.reduce((sum: any, p: any) => sum + p.stock, 0);
         const totalRented = products.reduce((sum: any, p: any) => sum + p.rented, 0);
         const totalLoss = products.reduce((sum: any, p: any) => sum + p.loss, 0);
+        const totalItems = totalStock + totalRented + totalLoss;
 
         // Calculate statistics
         const stats = {
           totalProducts: products.length,
           rentedItems: totalRented,
           lowStock: products.filter((p: any) => p.stock < 10).length,
-          lostItems: totalLoss
+          lostItems: totalLoss,
+          totalItems: totalItems,
+          totalStock,
         };
         setProductStats(stats);
 
@@ -52,7 +58,7 @@ const Dashboard: React.FC = () => {
           .sort((a: any, b: any) => (b.stock + b.rented) - (a.stock + a.rented))
           .slice(0, 5)
           .map((p: any) => ({
-            product: `${p.productName} (${p.size})`,
+            product: `${p.productName}\n(${p.size})`, // Adding line break for readability
             stock: p.stock,
             rented: p.rented
           }));
@@ -78,12 +84,20 @@ const Dashboard: React.FC = () => {
 
   const statsCards = [
     { 
-      title: 'Total Products', 
+      title: 'Types of products', 
       value: productStats.totalProducts, 
-      subtitle: 'Unique Items',
+      subtitle: 'Unique products',
       icon: InventoryIcon, 
       color: '#7b4eff', 
-      bgColor: '#f4f1ff' 
+      bgColor: '#9c68ff57' 
+    },
+    { 
+      title: 'Total products', 
+      value: productStats.totalItems,
+      subtitle: 'Total of all items',
+      icon: InventoryIcon, 
+      color: '#7b4eff', 
+      bgColor: '#30d6ed3b' 
     },
     { 
       title: 'Rented Items', 
@@ -91,7 +105,7 @@ const Dashboard: React.FC = () => {
       subtitle: 'Currently Rented',
       icon: ShoppingCartIcon, 
       color: '#4CAF50', 
-      bgColor: '#e8f5e9' 
+      bgColor: '#67cb6f63' 
     },
     { 
       title: 'Low Stock', 
@@ -109,9 +123,17 @@ const Dashboard: React.FC = () => {
       color: '#f44336', 
       bgColor: '#ffebee' 
     },
+    { 
+      title: 'Stock Product', 
+      value: productStats.totalStock,
+      subtitle: 'Total Stock',
+      icon: TimelineIcon, 
+      color: '#f44336', 
+      bgColor: '#bdff4054' 
+    },
   ];
 
-  // Use the same menu items as navbar
+  // Ensure each menu item has a unique icon
   const gstMenuItems = [
     { key: 'stocks&reports', text: 'Stocks & Reports', icon: ReceiptIcon, path: '/stocks' },
     { key: 'add-sale', text: 'Add Sale', icon: CategoryIcon, path: '/sales/new' },
@@ -124,10 +146,16 @@ const Dashboard: React.FC = () => {
     { key: 'challan', text: 'Challan', icon: StoreIcon, path: '/challan' },
     { key: 'payment', text: 'Payment', icon: CategoryIcon, path: '/payment' },
     { key: 'direct-bill', text: 'Direct Bill', icon: PersonAddAltIcon, path: '/bill/new' },
-    { key: 'customer-new', text: 'Add Customer', icon: PersonAddAltIcon, path: '/customerNonGST/new' },
+    { key: 'customer-new', text: 'Add Customer', icon: AddShoppingCartIcon, path: '/customerNonGST/new' }, // Unique Icon
   ];
 
-  const menuItems = [...nonGstMenuItems, ...gstMenuItems];
+  // Added more unique icons to avoid repetition
+  const additionalMenuItems = [
+    { key: 'product-management', text: 'Product Management', icon: ProductionQuantityLimitsIcon, path: '/products' },
+    { key: 'payment-history', text: 'Payment History', icon: AttachMoneyIcon, path: '/payment/history' },  // Unique Icon
+  ];
+
+  const menuItems = [...nonGstMenuItems, ...gstMenuItems, ...additionalMenuItems];
 
   if (loading) {
     return (
@@ -144,7 +172,7 @@ const Dashboard: React.FC = () => {
         {statsCards.map((card) => (
           <Grid item xs={12} sm={6} md={3} key={card.title}>
             <Paper
-              elevation={0}
+              elevation={3} // Improved shadow effect
               sx={{
                 p: 3,
                 display: 'flex',
@@ -152,10 +180,10 @@ const Dashboard: React.FC = () => {
                 justifyContent: 'space-between',
                 borderRadius: 3,
                 bgcolor: card.bgColor,
-                transition: 'transform 0.2s ease-in-out',
+                transition: 'transform 0.3s ease-in-out',
                 '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                  transform: 'translateY(-10px)',  // Improved hover effect
+                  boxShadow: '0 6px 25px rgba(0, 0, 0, 0.1)',
                 }
               }}
             >
@@ -170,7 +198,7 @@ const Dashboard: React.FC = () => {
                   {card.subtitle}
                 </Typography>
               </Box>
-              <card.icon sx={{ fontSize: 48, color: card.color }} />
+              <card.icon sx={{ fontSize: 50, color: card.color }} /> {/* Adjusted icon size */}
             </Paper>
           </Grid>
         ))}
@@ -202,28 +230,6 @@ const Dashboard: React.FC = () => {
             </Button>
           </Grid>
         ))}
-        <Grid item xs={12} sm={6} md={3}>
-          <Button
-            fullWidth
-            sx={{
-              bgcolor: '#7b4eff',
-              color: 'white',
-              p: 2,
-              borderRadius: 3,
-              boxShadow: '0 4px 14px rgba(123,78,255,0.2)',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                bgcolor: '#6a3dd9',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 20px rgba(123,78,255,0.3)',
-              }
-            }}
-            onClick={() => navigate('/products')}
-          >
-            <ProductionQuantityLimitsIcon sx={{ mr: 1, fontSize: 24 }} />
-            <Typography sx={{ fontWeight: 500 }}>Products</Typography>
-          </Button>
-        </Grid>
       </Grid>
 
       {/* Charts */}
@@ -280,7 +286,7 @@ const Dashboard: React.FC = () => {
                   faded: { innerRadius: 30, additionalRadius: -30 },
                   valueFormatter: (value) => {
                     const total = Number(productStats.totalProducts) + Number(productStats.rentedItems) + Number(productStats.lostItems);
-                    return `${value} items (${((Number(value) / total) * 100).toFixed(1)}%)`;
+                    return `${value.value} items (${((Number(value.value) / total) * 100).toFixed(1)}%)`;
                   }
                 }
               ]}
