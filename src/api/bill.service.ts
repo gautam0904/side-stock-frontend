@@ -9,7 +9,7 @@ interface GetCustomersParams {
   search?: string;
 }
 
-class ChallanService {
+class BillService {
   private pendingRequests: Map<string, Promise<any>> = new Map();
   private lastRequestTime: number = 0;
   private readonly DEBOUNCE_TIME = 1000;
@@ -36,7 +36,7 @@ class ChallanService {
     return promise;
   }
 
-  getAllChallan(params: GetCustomersParams = {}, signal?: AbortSignal) {
+  getAllBill(params: GetCustomersParams = {}, signal?: AbortSignal) {
     const {
       page = 1,
       limit = 10,
@@ -45,10 +45,10 @@ class ChallanService {
       search = ''
     } = params;
 
-    const requestKey = this.createRequestKey('/challan/get', params);
+    const requestKey = this.createRequestKey('/bill/get', params);
 
     return this.debounceRequest(requestKey, () =>
-      axiosInstance.get('/challan/get', {
+      axiosInstance.get('/bill/get', {
         params: {
           page,
           limit,
@@ -64,46 +64,46 @@ class ChallanService {
           // Handle aborted request
           return;
         }
-        console.error('Get challan error:', error);
+        console.error('Get bill error:', error);
         throw error;
       })
     );
   }
 
-  addChallan(purchaseData: any) {
-    const requestKey = this.createRequestKey('/challan/create', purchaseData);
+  addBill(purchaseData: any) {
+    const requestKey = this.createRequestKey('/bill/create', purchaseData);
 
     return this.debounceRequest(requestKey, () =>
-      axiosInstance.post('/challan/create', purchaseData)
+      axiosInstance.post('/bill/create', purchaseData)
         .then(response => response.data)
         .catch(error => {
-          console.error('Add challan error:', error);
+          console.error('Add bill error:', error);
           throw error;
         })
     );
   }
 
-  updateChallan(id: string, purchaseData: any) {
-    const requestKey = this.createRequestKey(`/challan/update/${id}`, purchaseData);
+  updateBill(id: string, purchaseData: any) {
+    const requestKey = this.createRequestKey(`/bill/update/${id}`, purchaseData);
 
     return this.debounceRequest(requestKey, () =>
-      axiosInstance.put(`/challan/update/${id}`, purchaseData)
+      axiosInstance.put(`/bill/update/${id}`, purchaseData)
         .then(response => response.data)
         .catch(error => {
-          console.error('Update challan error:', error);
+          console.error('Update bill error:', error);
           throw error;
         })
     );
   }
 
-  deleteChallan(id: string) {
-    const requestKey = this.createRequestKey(`/challan/delete/${id}`);
+  deleteBill(id: string) {
+    const requestKey = this.createRequestKey(`/bill/delete/${id}`);
 
     return this.debounceRequest(requestKey, () =>
       axiosInstance.delete(`/sale/delete/${id}`)
         .then(response => response.data)
         .catch(error => {
-          console.error('Delete challan error:', error);
+          console.error('Delete bill error:', error);
           throw error;
         })
     );
@@ -114,4 +114,4 @@ class ChallanService {
   }
 }
 
-export const challanService = new ChallanService();
+export const billService = new BillService();

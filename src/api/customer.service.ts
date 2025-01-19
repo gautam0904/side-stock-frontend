@@ -73,6 +73,15 @@ class CustomerService {
         throw error;
       });
   }
+
+  getCustomerByName(id: string) {
+    return axiosInstance.get(`/customer/getByName/${id}`)
+      .then(response => response.data)
+      .catch(error => {
+        console.error('Get customer by ID error:', error);
+        throw error;
+      });
+  }
 }
 
 export const customerService = new CustomerService();

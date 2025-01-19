@@ -12,7 +12,7 @@ import './App.css';
 
 // Lazy-loaded components
 const NotFound = React.lazy(() => import('./components/notFound/notFound.component.tsx'));
-const Dashboard = React.lazy(() => import('./pages/customerGST/customerGST.page.tsx'));
+const Dashboard = React.lazy(() => import('./pages/dashboard/dashboard.page.tsx'));
 
 const App = () => {
   return (
