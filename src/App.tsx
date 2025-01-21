@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/auth.contexts.tsx';
 import ErrorBoundary from './components/error/errorBoundary.component.tsx';
 import AppRoutes from './routes/app.routes.tsx';
@@ -23,7 +23,7 @@ const App = () => {
             <Router>
               <Suspense fallback={''}>
                 <Toaster position="top-right" />
-                <Navbar />
+                { <Navbar />}
                 <main className="main-content">
                   <Routes>
                     {AppRoutes}

@@ -15,7 +15,7 @@ import Divider from '@mui/material/Divider';
 import UploadIcon from '@mui/icons-material/Upload';
 import { useAuth } from '../../contexts/auth.contexts';
 import PercentIcon from '@mui/icons-material/Percent';
-import DoNotDisturbAltIcon from '@mui/icons-material/DoNotDisturbAlt';
+import HomeIcon from '@mui/icons-material/Home';
 import { GstContext } from '../../contexts/gst.contexts';
 import { useSidebar } from '../../contexts/sidebar.context';
 import Drawer from '@mui/material/Drawer';
@@ -25,6 +25,12 @@ import ListItemButton from '@mui/material/ListItemButton';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useNavigate } from 'react-router-dom';
 import ProductionQuantityLimitsIcon from '@mui/icons-material/ProductionQuantityLimits';
+import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
+import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import CurrencyBitcoinIcon from '@mui/icons-material/CurrencyBitcoin';
+import EmojiSymbolsIcon from '@mui/icons-material/EmojiSymbols';
 
 interface Props {
   /**
@@ -55,39 +61,20 @@ const Navbar: React.FC<Props> = (props) => {
   const settings = ['Profile', 'Account', 'Dashboard', 'Logout'];
 
   const gstMenuItems = [
-    { key: 'stocks&reports', text: 'Stocks & Reports', icon: ReceiptIcon, path: '/stocks' },
-    { key: 'add-sale', text: 'Add Sale', icon: CategoryIcon, path: '/sales/new' },
-    { key: 'add-purchase', text: 'Add Purchase', icon: StoreIcon, path: '/purchasesGST/new' },
-    { key: 'add-new-customer', text: 'Add New Customer', icon: PersonAddAltIcon, path: '/customersGST/new' },
+    { key: 'home', text: 'Home', icon: HomeIcon, path: '/dashboard'},
+    { key: 'stocks&reports', text: 'Stocks & Reports', icon: AutoStoriesIcon, path: '/stocks' },
+    { key: 'add-sale', text: 'Add Sale', icon: PointOfSaleIcon, path: '/sales/new' },
+    { key: 'add-purchase', text: 'Add Purchase', icon: DashboardCustomizeIcon, path: '/purchasesGST/new' },
+    { key: 'add-new-customer', text: 'Add New Customer', icon: EmojiSymbolsIcon, path: '/customersGST/new' },
   ];
 
   const nonGstMenuItems = [
     { key: 'stocks&price', text: 'Stocks & Price', icon: ReceiptIcon, path: '/stocks' },
     { key: 'challan', text: 'Challan', icon: StoreIcon, path: '/challan' },
-    { key: 'payment', text: 'Payment', icon: CategoryIcon, path: '/payment' },
-    { key: 'direct-bill', text: 'Direct Bill', icon: PersonAddAltIcon, path: '/bill/new' },
+    { key: 'payment', text: 'Payment', icon: CurrencyRupeeIcon, path: '/payment' },
+    { key: 'direct-bill', text: 'Direct Bill', icon: CurrencyBitcoinIcon, path: '/bill/new' },
     { key: 'customer-new', text: 'Add Customer', icon: PersonAddAltIcon, path: '/customerNonGST/new' },
   ];
-
-  const handleToggleGST = () => {
-    setIsNonGST(!isNonGST);
-  };
-
-  const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElNav(event.currentTarget);
-  };
-
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElUser(event.currentTarget);
-  };
-
-  const handleCloseNavMenu = () => {
-    setAnchorElNav(null);
-  };
-
-  const handleCloseUserMenu = () => {
-    setAnchorElUser(null);
-  };
 
   const navigate = useNavigate();
 
@@ -116,9 +103,6 @@ const Navbar: React.FC<Props> = (props) => {
   if (!isAuthenticated) {
     return null; // Don't render navbar for non-authenticated users
   }
-
-  const menuItems = isNonGST ? gstMenuItems : nonGstMenuItems;
-  const sideMenuItems = isNonGST ? nonGstMenuItems : gstMenuItems;
 
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center', }}>
@@ -165,7 +149,7 @@ const Navbar: React.FC<Props> = (props) => {
       <Divider />
 
       <List>
-        {sideMenuItems.map((item, index) => (
+        {nonGstMenuItems.map((item, index) => (
           <ListItem key={item.key} disablePadding>
             <ListItemButton sx={{ textAlign: 'center' }}>
               <Button
@@ -190,7 +174,7 @@ const Navbar: React.FC<Props> = (props) => {
       <Divider />
 
       <List sx={{ display: { xs: 'none', md: 'none', sm: 'block' }, alignItems: 'center', flexGrow: 1 }}>
-        {menuItems.map((item, index) => (
+        {gstMenuItems.map((item, index) => (
           <ListItem key={item.key} disablePadding>
             <ListItemButton sx={{ textAlign: 'center' }}>
               <Button
@@ -235,7 +219,7 @@ const Navbar: React.FC<Props> = (props) => {
             </Toolbar>
 
             <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center', gap: 1 }}>
-              {menuItems.map((item, index) => (
+              {gstMenuItems.map((item, index) => (
                 <React.Fragment key={item.key}>
                   <Button
                     sx={{ bgcolor: '#7b4eff', color: 'white', display: 'flex', alignItems: 'center', px: 2 }}
@@ -244,29 +228,11 @@ const Navbar: React.FC<Props> = (props) => {
                     <item.icon sx={{ mr: 1 }} />
                     {item.text}
                   </Button>
-                  {index < menuItems.length - 1 && (
+                  {index < gstMenuItems.length - 1 && (
                     <Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255,255,255,0.3)' }} />
                   )}
                 </React.Fragment>
               ))}
-            </Box>
-
-            <Box sx={{ bgcolor: 'white', flexGrow: 0, display: { xs: 'none', md: 'flex' } }}>
-              <Button
-                sx={{
-                  borderRadius: '4px',
-                  bgcolor: '#7b4eff',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  px: 2,
-
-                }}
-                onClick={handleToggleGST}
-              >
-                {isNonGST ? <DoNotDisturbAltIcon sx={{ mr: 1 }} /> : <PercentIcon sx={{ mr: 1 }} />}
-                {isNonGST ? 'Non-GST' : 'GST'}
-              </Button>
             </Box>
           </Toolbar>
         </Container>

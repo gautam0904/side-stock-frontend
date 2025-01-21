@@ -15,6 +15,15 @@ import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import ProductionQuantityLimitsIcon from '@mui/icons-material/ProductionQuantityLimits';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
+import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import CurrencyBitcoinIcon from '@mui/icons-material/CurrencyBitcoin';
+import EmojiSymbolsIcon from '@mui/icons-material/EmojiSymbols';
+import HomeIcon from '@mui/icons-material/Home';
+import BorderClearIcon from '@mui/icons-material/BorderClear';
+import ApartmentIcon from '@mui/icons-material/Apartment';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -26,6 +35,7 @@ const Dashboard: React.FC = () => {
     lowStock: 0,
     lostItems: 0,
     totalItems: 0,
+    totalStock: 0
   });
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieChartData, setPieChartData] = useState<any[]>([]);
@@ -87,7 +97,7 @@ const Dashboard: React.FC = () => {
       title: 'Types of products', 
       value: productStats.totalProducts, 
       subtitle: 'Unique products',
-      icon: InventoryIcon, 
+      icon: BorderClearIcon, 
       color: '#7b4eff', 
       bgColor: '#9c68ff57' 
     },
@@ -96,7 +106,7 @@ const Dashboard: React.FC = () => {
       value: productStats.totalItems,
       subtitle: 'Total of all items',
       icon: InventoryIcon, 
-      color: '#7b4eff', 
+      color: '#37a1b0', 
       bgColor: '#30d6ed3b' 
     },
     { 
@@ -104,7 +114,7 @@ const Dashboard: React.FC = () => {
       value: productStats.rentedItems,
       subtitle: 'Currently Rented',
       icon: ShoppingCartIcon, 
-      color: '#4CAF50', 
+      color: '#67cb6f', 
       bgColor: '#67cb6f63' 
     },
     { 
@@ -127,27 +137,43 @@ const Dashboard: React.FC = () => {
       title: 'Stock Product', 
       value: productStats.totalStock,
       subtitle: 'Total Stock',
-      icon: TimelineIcon, 
-      color: '#f44336', 
+      icon: ApartmentIcon, 
+      color: '#17500b', 
       bgColor: '#bdff4054' 
     },
   ];
 
   // Ensure each menu item has a unique icon
   const gstMenuItems = [
-    { key: 'stocks&reports', text: 'Stocks & Reports', icon: ReceiptIcon, path: '/stocks' },
-    { key: 'add-sale', text: 'Add Sale', icon: CategoryIcon, path: '/sales/new' },
-    { key: 'add-purchase', text: 'Add Purchase', icon: StoreIcon, path: '/purchasesGST/new' },
-    { key: 'add-new-customer', text: 'Add New Customer', icon: PersonAddAltIcon, path: '/customersGST/new' },
+    { key: 'home', text: 'Home', icon: HomeIcon, path: '/dashboard'},
+    { key: 'stocks&reports', text: 'Stocks & Reports', icon: AutoStoriesIcon, path: '/stocks' },
+    { key: 'add-sale', text: 'Add Sale', icon: PointOfSaleIcon, path: '/sales/new' },
+    { key: 'add-purchase', text: 'Add Purchase', icon: DashboardCustomizeIcon, path: '/purchasesGST/new' },
+    { key: 'add-new-customer', text: 'Add New Customer', icon: EmojiSymbolsIcon, path: '/customersGST/new' },
   ];
 
   const nonGstMenuItems = [
     { key: 'stocks&price', text: 'Stocks & Price', icon: ReceiptIcon, path: '/stocks' },
     { key: 'challan', text: 'Challan', icon: StoreIcon, path: '/challan' },
-    { key: 'payment', text: 'Payment', icon: CategoryIcon, path: '/payment' },
-    { key: 'direct-bill', text: 'Direct Bill', icon: PersonAddAltIcon, path: '/bill/new' },
-    { key: 'customer-new', text: 'Add Customer', icon: AddShoppingCartIcon, path: '/customerNonGST/new' }, // Unique Icon
+    { key: 'payment', text: 'Payment', icon: CurrencyRupeeIcon, path: '/payment' },
+    { key: 'direct-bill', text: 'Direct Bill', icon: CurrencyBitcoinIcon, path: '/bill/new' },
+    { key: 'customer-new', text: 'Add Customer', icon: PersonAddAltIcon, path: '/customerNonGST/new' },
   ];
+
+  // const gstMenuItems = [
+  //   { key: 'stocks&reports', text: 'Stocks & Reports', icon: ReceiptIcon, path: '/stocks' },
+  //   { key: 'add-sale', text: 'Add Sale', icon: CategoryIcon, path: '/sales/new' },
+  //   { key: 'add-purchase', text: 'Add Purchase', icon: StoreIcon, path: '/purchasesGST/new' },
+  //   { key: 'add-new-customer', text: 'Add New Customer', icon: PersonAddAltIcon, path: '/customersGST/new' },
+  // ];
+
+  // const nonGstMenuItems = [
+  //   { key: 'stocks&price', text: 'Stocks & Price', icon: ReceiptIcon, path: '/stocks' },
+  //   { key: 'challan', text: 'Challan', icon: StoreIcon, path: '/challan' },
+  //   { key: 'payment', text: 'Payment', icon: CategoryIcon, path: '/payment' },
+  //   { key: 'direct-bill', text: 'Direct Bill', icon: PersonAddAltIcon, path: '/bill/new' },
+  //   { key: 'customer-new', text: 'Add Customer', icon: AddShoppingCartIcon, path: '/customerNonGST/new' }, // Unique Icon
+  // ];
 
   // Added more unique icons to avoid repetition
   const additionalMenuItems = [
@@ -256,9 +282,8 @@ const Dashboard: React.FC = () => {
                 data: chartData.map(item => item.product),
                 scaleType: 'band',
                 tickLabelStyle: { 
-                  angle: 45, 
                   textAnchor: 'start',
-                  fontSize: 12
+                  accentColor: '#7b4eff'
                 }
               }]}
               height={350}
