@@ -1,8 +1,10 @@
 import React from 'react';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 import './formInput.css';
-import { styled } from '@mui/material/styles';
+import { TextField } from '@mui/material';
 
 interface FormInputProps {
   name: string;
@@ -22,51 +24,12 @@ interface FormInputProps {
   autoFocus?: boolean;
   fullWidth?: boolean;
   sx?: React.CSSProperties | any;
+  disabled?: boolean;
+  onClick?: (e: React.MouseEvent<HTMLInputElement>) => void;
+  InputProps?: React.ComponentProps<typeof TextField>['InputProps'];
 }
 
-// Custom styled DatePicker
-const StyledDatePicker = styled(DatePicker)(({ theme }) => ({
-  width: '100%',
-  
-  '& .MuiInputBase-root': {
-    height: '40px',
-    borderRadius: '4px',
-    backgroundColor: '#fff',
-    
-    '& fieldset': {
-      borderColor: '#e0e0e0',
-    },
-    
-    '&:hover fieldset': {
-      borderColor: theme.palette.primary.main,
-    },
-    
-    '&.Mui-focused fieldset': {
-      borderColor: theme.palette.primary.main,
-    }
-  },
-
-  '& .MuiOutlinedInput-input': {
-    padding: '10px 14px',
-    fontSize: '0.9rem',
-  },
-
-  '& .MuiInputLabel-root': {
-    transform: 'translate(14px, 11px) scale(1)',
-    
-    '&.Mui-focused, &.MuiFormLabel-filled': {
-      transform: 'translate(14px, -9px) scale(0.75)',
-    }
-  },
-
-  '& .MuiInputAdornment-root button': {
-    padding: '8px',
-    marginRight: '2px',
-    color: theme.palette.primary.main,
-  }
-}));
-
-const FormInput: React.FC<FormInputProps> = ({
+export const FormInput: React.FC<FormInputProps> = ({
   name,
   label,
   type = 'text',
@@ -83,7 +46,10 @@ const FormInput: React.FC<FormInputProps> = ({
   autoComplete,
   autoFocus = false,
   fullWidth = true,
-  sx
+  sx,
+  disabled = false,
+  InputProps,
+  onClick
 }) => {
   const [error, setError] = React.useState<string | undefined>();
 
@@ -109,36 +75,51 @@ const FormInput: React.FC<FormInputProps> = ({
     return (
       <div className={`form-field-container ${containerClassName} ${fullWidth ? 'full-width' : ''}`}>
         <div className="form-field-wrapper">
-          <DatePicker
-            id={name}
-            name={name}
-            selected={value ? new Date(value) : null}
-            onChange={(date: Date | null) => {
-              if (onChange) {
-                onChange({
-                  target: {
-                    name,
-                    value: date ? date.toISOString().split('T')[0] : ''
-                  }
-                });
-              }
-            }}
-            className={`form-input ${className} ${error ? 'input-error' : ''}`}
-            dateFormat="yyyy-MM-dd"
-            placeholderText={placeholder}
-            required={required}
-            autoComplete={autoComplete}
-            onBlur={onBlur}
-            onFocus={onFocus}
-            onKeyDown={onKeyDown}
-            autoFocus={autoFocus}
-          />
-          <label htmlFor={name} className="floating-label">
-            {label}
-            {required && <span className="required-star">*</span>}
-          </label>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label={label}
+              value={value ? dayjs(value) : null}
+              onChange={(newValue) => {
+                if (onChange) {
+                  onChange({
+                    target: {
+                      name,
+                      value: newValue ? newValue.format('YYYY-MM-DD') : ''
+                    }
+                  });
+                }
+              }}
+              disabled={disabled}
+              slotProps={{
+                textField: {
+                  required,
+                  error: !!error,
+                  helperText: error,
+                  fullWidth: true,
+                  size: "medium",
+                  sx: {
+                    '& .MuiInputBase-root': {
+                      height: '56px',
+                      backgroundColor: 'var(--surface-light)',
+                    },
+                    '& .MuiInputLabel-root': {
+                      '&.Mui-focused': {
+                        color: 'var(--primary-color)'
+                      }
+                    },
+                    '& .MuiOutlinedInput-root': {
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary-color)',
+                        borderWidth: '2px'
+                      }
+                    }
+                  },
+                  disabled  
+                }
+              }}
+            />
+          </LocalizationProvider>
         </div>
-        {error && <span className="error-message">{error}</span>}
       </div>
     );
   }
@@ -160,13 +141,18 @@ const FormInput: React.FC<FormInputProps> = ({
           onKeyDown={onKeyDown}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
+          disabled={disabled}
         />
         <label htmlFor={name} className="floating-label">
           {label}
           {required && <span className="required-star">*</span>}
         </label>
-      </div>
+        <label htmlFor={name} className="floating-label">
       {error && <span className="error-message">{error}</span>}
+          {label}
+          {required && <span className="required-star">*</span>}
+        </label>
+      </div>
     </div>
   );
 };

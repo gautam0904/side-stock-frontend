@@ -35,7 +35,11 @@ class CustomerService {
   }
 
   addCustomer(customerData: any) {
-    return axiosInstance.post('/customer/create', customerData)
+    return axiosInstance.post('/customer/create', customerData , {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+    },
+    })
       .then(response => response.data)
       .catch(error => {
         console.error('Add customer error:', error);
@@ -44,7 +48,7 @@ class CustomerService {
   }
 
   updateCustomer(id: string, customerData: any) {
-    return axiosInstance.put(`/customer/update`, customerData)
+    return axiosInstance.put(`/customer/update/${id}`, customerData)
       .then(response => response.data)
       .catch(error => {
         console.error('Update customer error:', error);
@@ -63,6 +67,15 @@ class CustomerService {
 
   getCustomerById(id: string) {
     return axiosInstance.get(`/customer/get/${id}`)
+      .then(response => response.data)
+      .catch(error => {
+        console.error('Get customer by ID error:', error);
+        throw error;
+      });
+  }
+
+  getCustomerByName(id: string) {
+    return axiosInstance.get(`/customer/getByName/${id}`)
       .then(response => response.data)
       .catch(error => {
         console.error('Get customer by ID error:', error);
