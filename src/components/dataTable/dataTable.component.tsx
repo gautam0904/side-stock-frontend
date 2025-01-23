@@ -348,6 +348,161 @@ const CommonDataTable = ({ rows, loading, handleEditClick, handleDeleteClick }: 
       }
     };
 
+    const handleShareClick = () => {
+      // Generate the PDF content using jsPDF
+      const visibleColumns = columns.filter(col => {
+        return columnVisibility[col.field] !== false && col.field !== 'actions';
+      });
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.setTextColor(123, 78, 255);
+      doc.text('Purchase List', 14, 15);
+  
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+  
+      const headers = visibleColumns.map(col => col.headerName);
+      const keys = visibleColumns.map(col => col.field);
+  
+      const tableData = bill.map((purchase: any) =>
+          keys.map(key => {
+              switch (key) {
+                  case 'amount':
+                  case 'totalAmount':
+                  case 'sgst':
+                  case 'cgst':
+                  case 'igst':
+                      const value = purchase[key] || 0;
+                      return { content: Number(value).toFixed(2), styles: { halign: 'right' } };
+                  case 'date':
+                      return new Date(purchase[key]).toLocaleDateString('en-GB');
+                  default:
+                      return purchase[key]?.toString() || '';
+              }
+          })
+      );
+  
+      // Calculate totals for numeric columns
+      const totals: { [key: string]: number } = {};
+      const numericFields = ['amount', 'totalAmount', 'sgst', 'cgst', 'igst'];
+  
+      keys.forEach((key) => {
+          if (numericFields.includes(key)) {
+              totals[key] = bill.reduce((sum, purchase) => sum + (purchase[key] || 0), 0);
+          }
+      });
+  
+      // Prepare footer row with styled totals
+      const footerRow = keys.map((key, index) => {
+          if (numericFields.includes(key)) {
+              const value = totals[key] || 0;
+              return Number(value).toFixed(2);
+          }
+          if (index === 0) {
+              return 'Total';
+          }
+          return '';
+      });
+  
+      // Calculate rows per page based on content height
+      const calculateRowsPerPage = (firstPageData: any[]) => {
+          const testTable = doc.autoTable({
+              head: [headers],
+              body: [firstPageData[0]],
+              startY: 25,
+              styles: {
+                  fontSize: 9,
+                  cellPadding: { left: 4, right: 4, top: 2, bottom: 2 },
+                  lineWidth: 0,
+              }
+          });
+  
+          const pageHeight = doc.internal.pageSize.height;
+          const tableRowHeight = ((testTable as any).lastAutoTable.finalY - 25) / 1;
+          const availableHeight = pageHeight - 20;
+          return Math.floor(availableHeight / tableRowHeight);
+      };
+  
+      // Calculate dynamic rows per page
+      const rowsPerPage = calculateRowsPerPage(tableData);
+  
+      // Split data into pages using calculated rowsPerPage
+      const pages = [];
+      for (let i = 0; i < tableData.length; i += rowsPerPage) {
+          pages.push(tableData.slice(i, i + rowsPerPage));
+      }
+  
+      let startY = 25;
+      let grandTotals: { [key: string]: number } = {};
+  
+      // Process each page
+      pages.forEach((pageData, pageIndex) => {
+          // Calculate page totals
+          const pageTotals: { [key: string]: number } = {};
+          keys.forEach((key) => {
+              if (numericFields.includes(key)) {
+                  pageTotals[key] = pageData.reduce((sum : any, row: any) => {
+                      // Extract numeric value from the cell content
+                      const value = typeof row[keys.indexOf(key)] === 'object'
+                          ? Number(row[keys.indexOf(key)].content)
+                          : Number(row[keys.indexOf(key)]);
+                      return sum + (isNaN(value) ? 0 : value);
+                  }, 0);
+                  grandTotals[key] = (grandTotals[key] || 0) + pageTotals[key];
+              }
+          });
+  
+          // Add page data with page totals
+          doc.autoTable({
+              head: [headers],
+              body: pageData,
+              startY: startY,
+              styles: {
+                  fontSize: 9,
+                  cellPadding: { left: 4, right: 4, top: 2, bottom: 2 },
+                  lineWidth: 0,
+              },
+              headStyles: {
+                  fillColor: [123, 78, 255],
+                  textColor: [255, 255, 255],
+                  fontStyle: 'bold',
+                  fontSize: 11
+              },
+          });
+  
+          startY = (doc as any).lastAutoTable.finalY + 10;
+  
+          // Add new page if not the last page
+          if (pageIndex < pages.length - 1) {
+              doc.addPage();
+              startY = 25;
+          }
+      });
+  
+      // Add page numbers
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          doc.setFontSize(10);
+          doc.setTextColor(100);
+          doc.text(
+              `Page ${i} of ${pageCount}`,
+              doc.internal.pageSize.width / 2,
+              doc.internal.pageSize.height - 15,
+              { align: 'center' }
+          );
+      }
+  
+      // WhatsApp URL format for sharing files
+      const shareText = `Check out my bill for ${month} ${year}. Please find the attached PDF.`;
+      const whatsappUrl = `https://wa.me/${customerPhoneNumber}?text=${encodeURIComponent(shareText)}%20${encodeURIComponent(pdfBase64)}`;
+  
+      // Open WhatsApp in a new window/tab with the prefilled message
+      window.open(whatsappUrl, '_blank');
+    };
+  
+
     return (
       <GridToolbarContainer sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
