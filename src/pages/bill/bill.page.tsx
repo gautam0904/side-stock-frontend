@@ -47,6 +47,7 @@ import { styled } from '@mui/material/styles';
 import PhotoIcon from '@mui/icons-material/Photo';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
+import { Iprizefix, ISite } from 'src/DTO/customer.dto';
 
 declare module 'jspdf' {
     interface jsPDF {
@@ -61,10 +62,12 @@ interface IProducts {
     startingDate: Date;
     endingDate: Date;
     amount: Number;
+    size?: string;
 }
 
 const initialProduct: IProducts[] = [{
     productName: '',
+    size: '',
     quantity: 0,
     rate: 0,
     startingDate: new Date(),
@@ -77,7 +80,7 @@ const initialSite = {
     siteAddress: ''
 };
 
-interface IBill {
+export interface IBill {
     _id?: string;
     billName: string;
     mobileNumber: string;
@@ -599,26 +602,26 @@ const Bill = () => {
         );
 
         // Calculate totals for numeric columns
-        // const totals: { [key: string]: number } = {};
-        // const numericFields = ['amount', 'totalAmount', 'sgst', 'cgst', 'igst'];
+        const totals: { [key: string]: number } = {};
+        const numericFields = ['amount', 'totalAmount', 'sgst', 'cgst', 'igst'];
 
-        // keys.forEach((key) => {
-        //     if (numericFields.includes(key)) {
-        //         totals[key] = purchases.reduce((sum, purchase) => sum + (purchase[key] || 0), 0);
-        //     }
-        // });
+        keys.forEach((key) => {
+            if (numericFields.includes(key)) {
+                totals[key] = bill.reduce((sum, purchase) => sum + (purchase[key] || 0), 0);
+            }
+        });
 
         // Prepare footer row with styled totals
-        // const footerRow = keys.map((key, index) => {
-        //     if (numericFields.includes(key)) {
-        //         const value = totals[key] || 0;
-        //         return Number(value).toFixed(2);
-        //     }
-        //     if (index === 0) {
-        //         return 'Total';
-        //     }
-        //     return '';
-        // });
+        const footerRow = keys.map((key, index) => {
+            if (numericFields.includes(key)) {
+                const value = totals[key] || 0;
+                return Number(value).toFixed(2);
+            }
+            if (index === 0) {
+                return 'Total';
+            }
+            return '';
+        });
 
         // Calculate rows per page based on content height
         const calculateRowsPerPage = (firstPageData: any[]) => {
@@ -654,19 +657,19 @@ const Bill = () => {
         // Process each page
         pages.forEach((pageData, pageIndex) => {
             // Calculate page totals
-            // const pageTotals: { [key: string]: number } = {};
-            // keys.forEach((key) => {
-            //     if (numericFields.includes(key)) {
-            //         pageTotals[key] = pageData.reduce((sum, row) => {
-            //             // Extract numeric value from the cell content
-            //             const value = typeof row[keys.indexOf(key)] === 'object'
-            //                 ? Number(row[keys.indexOf(key)].content)
-            //                 : Number(row[keys.indexOf(key)]);
-            //             return sum + (isNaN(value) ? 0 : value);
-            //         }, 0);
-            //         grandTotals[key] = (grandTotals[key] || 0) + pageTotals[key];
-            //     }
-            // });
+            const pageTotals: { [key: string]: number } = {};
+            keys.forEach((key) => {
+                if (numericFields.includes(key)) {
+                    pageTotals[key] = pageData.reduce((sum, row) => {
+                        // Extract numeric value from the cell content
+                        const value = typeof row[keys.indexOf(key)] === 'object'
+                            ? Number(row[keys.indexOf(key)].content)
+                            : Number(row[keys.indexOf(key)]);
+                        return sum + (isNaN(value) ? 0 : value);
+                    }, 0);
+                    grandTotals[key] = (grandTotals[key] || 0) + pageTotals[key];
+                }
+            });
 
             // Add page data with page totals
             doc.autoTable({
@@ -869,7 +872,7 @@ const Bill = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {selectedBill.prizefix?.map((product, index) => (
+                                {selectedBill.prizefix?.map((product: any, index: any) => (
                                     <TableRow key={index}>
                                         <TableCell>{product.productName}</TableCell>
                                         <TableCell>{product.size}</TableCell>
@@ -892,7 +895,7 @@ const Bill = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {selectedBill?.sites?.map((site, index) => (
+                                    {selectedBill?.sites?.map((site: any, index: any) => (
                                         <TableRow key={index}>
                                             <TableCell>{site.siteName}</TableCell>
                                             <TableCell>{site.siteAddress}</TableCell>
@@ -1313,7 +1316,7 @@ const Bill = () => {
                                     Products
                                 </Typography>
                                 <Stack spacing={2}>
-                                    {formData.prizefix?.map((product, index) => (
+                                    {formData.prizefix?.map((product : any, index: any) => (
                                         <Paper
                                             key={index}
                                             elevation={0}
@@ -1380,7 +1383,7 @@ const Bill = () => {
                                     Sites
                                 </Typography>
                                 <Stack spacing={2}>
-                                    {formData.sites?.map((site, index) => (
+                                    {formData.sites?.map((site : any, index: any) => (
                                         <Paper
                                             key={index}
                                             elevation={0}

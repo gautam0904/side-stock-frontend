@@ -114,4 +114,4 @@ class SaleService {
   }
 }
 
-export const purchaseService = new PurchaseService();
+export const saleService = new SaleService();

@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { saleService } from '../../api/purchaseGST.service';
+import { saleService } from '../../api/saleGST.service';
 import { productService } from '../../api/product.service';
 import { toast } from 'react-hot-toast';
 import {
