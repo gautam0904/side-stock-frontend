@@ -1,82 +1,52 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { productService } from '../../api/product.service';
 import { toast } from 'react-hot-toast';
 import {
   Box,
-  Button,
-  Modal,
-  Typography,
   IconButton,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  DialogContentText,
+  Paper,
   CircularProgress,
   Stack,
-  Paper,
-  ButtonGroup,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
+  Tooltip,
+  Typography
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import { GridToolbar } from '@mui/x-data-grid';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import AddIcon from '@mui/icons-material/Add';
-import Form from '../../components/form/form.component';
-import { FormInput } from '../../components/formInput/formInput.component';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import FirstPageIcon from '@mui/icons-material/FirstPage';
-import LastPageIcon from '@mui/icons-material/LastPage';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
-import { IProducts } from 'src/interfaces/common.interface';
+import RotateIcon from '@mui/icons-material/Rotate90DegreesCw';
 
-            
-const initialFormData: IProducts = {
-  productName: '',
-  size: '',
-  quantity: 0
-};
 
 const Stocks = () => {
-  const [open, setOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<string | null>(null);
-  const [formData, setFormData] = useState<IProducts>(initialFormData);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
   const [loading, setLoading] = useState(false);
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
     pageSize: 10
   });
   const [totalRows, setTotalRows] = useState(0);
-
-  const [shouldFetch, setShouldFetch] = useState(true);
+  const [products, setProducts] = useState<any[]>([]);
   const fetchInProgress = useRef(false);
-  const [products, setProducts] = useState<IProducts[]>([]);
+  const [transposedData, setTransposedData] = useState<any[]>([]);
 
-  const columns: GridColDef[] = [
-    { field: 'no', headerName: 'No', width: 70 },
-    { field: 'productName', headerName: 'Product Name', width: 130 },
-    { field: 'size', headerName: 'Size', width: 130 },
-    { field: 'stock', headerName: 'In Stock', width: 150 },
-    { field: 'rented', headerName: 'Ranted', width: 150 },
-    { field: 'loss', headerName: 'Loss', width: 130 },
-    { field: 'total', headerName: 'Total', width: 130 },
-  ];
+  const columns: GridColDef[] = isLandscape
+    ? [
+        { field: 'attribute', headerName: '', width: 150, sortable: false, filterable: false, disableColumnMenu: true },
+        ...products.map((p, index) => ({
+          field: `product-${index}`,
+          headerName: p.productName,
+          width: 150,
+          sortable: false,
+          filterable: false,
+          disableColumnMenu: true
+        }))
+      ]
+    : [
+        { field: 'no', headerName: 'No', width: 70, sortable: false, filterable: false, disableColumnMenu: true },
+        { field: 'productName', headerName: 'Product Name', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
+        { field: 'size', headerName: 'Size', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
+        { field: 'stock', headerName: 'In Stock', width: 150, sortable: false, filterable: false, disableColumnMenu: true },
+        { field: 'rented', headerName: 'Rented', width: 150, sortable: false, filterable: false, disableColumnMenu: true },
+        { field: 'loss', headerName: 'Loss', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
+        { field: 'total', headerName: 'Total', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
+      ];
 
   const fetchProducts = useCallback(async () => {
     if (fetchInProgress.current || loading) return;
@@ -95,13 +65,16 @@ const Stocks = () => {
       const ProductsWithNumbers = newProducts.map((purchase: any, index: number) => ({
         ...purchase,
         id: purchase._id,
-        no:  index + 1 ,
+        no: index + 1,
         total: Number(purchase.stock) + Number(purchase.rented) + Number(purchase.loss)
       }));
 
       setProducts(ProductsWithNumbers);
       setTotalRows(totalCount);
-      setShouldFetch(false);
+
+      // Create the transposed data
+      const transposed = transposeData(ProductsWithNumbers);
+      setTransposedData(transposed);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to fetch Products');
     } finally {
@@ -110,33 +83,45 @@ const Stocks = () => {
     }
   }, [loading]);
 
-  // Initial fetch effect
-  useEffect(() => {
-    if (shouldFetch) {
-      fetchProducts();
-    }
-  }, [shouldFetch, fetchProducts]);
+  // Function to transpose data
+  const transposeData = (data: any[]) => {
+    // Extracting the columns (attributes)
+    const attributes = ['size', 'stock', 'rented', 'loss', 'total'];
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => {
-    setOpen(false);
-    setIsEditMode(false);
-    setFormData(initialFormData);
+    // Transposing rows to columns
+    return attributes.map((attribute, index) => ({
+      id: attribute, // Use attribute as the unique id for the row
+      attribute: attribute,
+      ...data.reduce((acc, item, itemIndex) => {
+        acc[`product-${itemIndex}`] = item[attribute];
+        return acc;
+      }, {})
+    }));
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const toggleOrientation = () => {
+    setIsLandscape(prev => !prev);
   };
 
   return (
     <Box sx={{ p: 2 }}>
       <Paper sx={{ height: 600, width: '100%' }}>
+        {/* Button to toggle orientation */}
+        <Stack direction="row" alignItems="center" sx={{ mb: 2 }}>
+          <Typography variant="h6">Stock List</Typography>
+          <Tooltip title="Toggle Landscape/Portrait">
+            <IconButton onClick={toggleOrientation}>
+              <RotateIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+
         <DataGrid
-          rows={products}
+          rows={isLandscape ? transposedData : products}
           columns={columns}
           rowCount={totalRows}
           loading={loading}
@@ -145,10 +130,9 @@ const Stocks = () => {
           pageSizeOptions={[5, 10, 25, 50, { value: -1, label: 'All' }]}
           onPaginationModelChange={(newModel) => {
             setPaginationModel(newModel);
-            setShouldFetch(true);
           }}
           disableRowSelectionOnClick
-          getRowId={(row) => row._id}
+          getRowId={(row) => row.id} // Ensure the custom id is used
           sx={{
             border: 0,
             '& .MuiDataGrid-columnHeaders': {
@@ -163,13 +147,6 @@ const Stocks = () => {
             '& .MuiDataGrid-footerContainer': {
               borderTop: 'none',
             },
-          }}
-          slots={{
-            loadingOverlay: () => (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                <CircularProgress color="primary" />
-              </Box>
-            ),
           }}
         />
       </Paper>

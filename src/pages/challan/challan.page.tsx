@@ -3,6 +3,7 @@ import { challanService } from '../../api/challan.service';
 import { productService } from '../../api/product.service';
 import { customerService } from '../../api/customer.service';
 import { toast } from 'react-hot-toast';
+import './challan.css';
 import {
   Box,
   Button,
@@ -50,7 +51,10 @@ import {
 import { SelectChangeEvent } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { debounce } from 'lodash';
-import { ICutomer, ISite } from 'src/DTO/customer.dto';
+import { ICutomer, Iprizefix, ISite } from 'src/DTO/customer.dto';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import FireTruckIcon from '@mui/icons-material/FireTruck';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -65,6 +69,7 @@ interface IChallan {
   type: string;
   date: Date;
   custsomerName: string;
+  customerId: string;
   mobileNumber: string;
   siteName: string;
   siteAddress: string;
@@ -72,9 +77,10 @@ interface IChallan {
   loading: number;
   unloading: number;
   transportCharge: number;
+  serviceCharge: Number;
+  damageCharge: Number;
   amount: number;
   totalAmount: number;
-  [key: string]: any;
 }
 
 const initialProduct: IProducts = {
@@ -89,11 +95,14 @@ const initialProduct: IProducts = {
 const initialFormData: IChallan = {
   challanNumber: '',
   date: new Date(),
+  customerId: '',
   custsomerName: '',
   type: 'Delivery',
   mobileNumber: '',
   siteAddress: '',
   siteName: '',
+  serviceCharge: 0,
+  damageCharge: 0,
   products: [{
     _id: '',
     date: new Date(),
@@ -164,7 +173,7 @@ const Challan = () => {
   });
   const gridRef = useRef<any>(null);
   const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
-  const [selectedGSTRate, setSelectedGSTRate] = useState('18');
+  // const [selectedGSTRate, setSelectedGSTRate] = useState('18');
   const [productOptions, setProductOptions] = useState<{ name: string; sizes: string[] }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [customers, setCustomers] = useState<ICutomer[]>([]);
@@ -240,6 +249,18 @@ const Challan = () => {
     }
   ];
 
+  const handleSiteChange = (value: any) => {
+    setFormData(prev => {
+      const s = sites.find((s) => s.siteName == value)
+      return {
+        ...prev,
+        siteName: value,
+        siteAddress: s?.siteAddress || ''
+      };
+    });
+  };
+
+
   const handleProductChange = (index: number, field: keyof IProducts, value: any) => {
     setFormData(prev => {
       const newProducts = [...prev.products];
@@ -275,17 +296,17 @@ const Challan = () => {
 
   const addProduct = () => {
     setFormData(prev => ({
-        ...prev,
-        products: [...(prev.products || []), {
-            productName: '',
-            date: new Date(),
-            quantity: 0,
-            size: '',
-            rate: 0,
-            amount: 0
-        }]
+      ...prev,
+      products: [...(prev.products || []), {
+        productName: '',
+        date: new Date(),
+        quantity: 0,
+        size: '',
+        rate: 0,
+        amount: 0
+      }]
     }));
-};
+  };
 
   const removeProduct = (index: number) => {
     setFormData(prev => ({
@@ -335,116 +356,16 @@ const Challan = () => {
     setFormData(initialFormData);
   };
 
-  const fetchGSTDetails = async (gstNumber: string) => {
-    try {
-      // Using a different free GST API
-      const response = await fetch(`https://api.gstincheck.co.in/v1/verify/${gstNumber}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': '4ff236814d3317fdd0479ca80b1b4cd4'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch GST details');
-      }
-
-      const data = await response.json();
-
-      // Check if the API call was successful
-      if (data && data.success) {
-        return {
-          legalName: data.data.lgnm || '',  // Legal name
-          tradeName: data.data.tradeNam || '',  // Trade name
-          status: data.data.sts || ''  // GST status
-        };
-      } else {
-        throw new Error(data.message || 'Failed to fetch GST details');
-      }
-    } catch (error) {
-      console.error('Error fetching GST details:', error);
-      return null;
-    }
-  };
-
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    // Convert GST number to uppercase
-    const processedValue = name === 'GSTnumber' ? value.toUpperCase() : value;
+    const processedValue = value;
 
-    // Special handling for GST number
-    if (name === 'GSTnumber' && processedValue.length === 15) {
-      try {
-        setLoading(true);
-
-        // Fetch GST details
-        const gstDetails = await fetchGSTDetails(processedValue);
-
-        if (gstDetails) {
-          // Check if the GST status is active
-          if (gstDetails.status.toLowerCase() !== 'active') {
-            toast.error('GST number is not active');
-          }
-
-          setFormData(prev => ({
-            ...prev,
-            [name]: processedValue,
-            companyName: gstDetails.tradeName || gstDetails.legalName || '',
-            supplierName: gstDetails.legalName || ''
-          }));
-
-          toast.success('GST details fetched successfully');
-        } else {
-          toast.error('Could not fetch GST details');
-        }
-      } catch (error: any) {
-        toast.error(error.message || 'Error fetching GST details');
-        console.error('GST fetch error:', error);
-      } finally {
-        setLoading(false);
-      }
-
-      // Continue with existing GST number logic
-      setFormData(prev => {
-        const newFormData = {
-          ...prev,
-          [name]: processedValue
-        };
-
-        if (processedValue.length >= 2) {
-          const isHomeState = processedValue.startsWith('24');
-          const currentGSTRate = Number(selectedGSTRate);
-
-          if (!iscustomGstRates) {
-            const newSgst = isHomeState ? (prev.amount * (currentGSTRate / 2) / 100) : 0;
-            const newCgst = isHomeState ? (prev.amount * (currentGSTRate / 2) / 100) : 0;
-            const newIgst = isHomeState ? 0 : (prev.amount * currentGSTRate / 100);
-
-            return {
-              ...newFormData,
-              amount: prev.amount + (isHomeState ? (newSgst + newCgst) : newIgst)
-            };
-          }
-        }
-        return newFormData;
-      });
-    } else {
-      // Original handleChange logic for other fields
-      setFormData(prev => ({
-        ...prev,
-        [name]: processedValue
-      }));
-    }
-  };
-
-  const validateGST = (field: string, value: string) => {
-    const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if (!value) return `${field} is required`;
-    if (!gstPattern.test(value)) return 'Invalid GST Number format';
-    return undefined;
-  };
+    setFormData(prev => ({
+      ...prev,
+      [name]: processedValue
+    }));
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -584,7 +505,7 @@ const Challan = () => {
 
     keys.forEach((key) => {
       if (numericFields.includes(key)) {
-        totals[key] = challan.reduce((sum, purchase) => sum + (purchase[key] || 0), 0);
+        totals[key] = challan.reduce((sum, purchase: any) => sum + (purchase[key] || 0), 0);
       }
     });
 
@@ -789,7 +710,7 @@ const Challan = () => {
             <Grid container spacing={2}>
               <Grid item xs={6}>
                 <Typography variant="body2" color="textSecondary">Challan Type:</Typography>
-                <Typography>{selectedPurchase.challenType}</Typography>
+                <Typography>{selectedPurchase.type}</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="body2" color="textSecondary">Challan Number:</Typography>
@@ -801,7 +722,7 @@ const Challan = () => {
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="body2" color="textSecondary">Customer Name:</Typography>
-                <Typography>{selectedPurchase.companyName}</Typography>
+                <Typography>{selectedPurchase.custsomerName}</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="body2" color="textSecondary">Mobile Number:</Typography>
@@ -885,17 +806,38 @@ const Challan = () => {
       width: '100%',
       mb: 2
     }}>
-      <Box flex={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
+      {/* Product Select */}
+      <Box flex={2} sx={{ width: { xs: '100%', md: 'auto', margin: 'auto' } }}>
         <StyledSelect
           fullWidth
           value={product.productName || ''}
           onChange={(e: SelectChangeEvent<unknown>) => {
             handleProductChange(index, 'productName', e.target.value);
-            handleProductChange(index, 'size', '');
+            handleProductChange(index, 'size', ''); // Reset size when product changes
           }}
           displayEmpty
           renderValue={(value) => (value as string) || 'Select Product'}
-          sx={{ minWidth: { xs: '100%', md: 200 } }}
+          sx={{
+            height: '55px',  // Set height to match other fields
+            '& .MuiSelect-root': {
+              height: '55px',  // Ensure the root select element has the correct height
+            },
+
+            '& .MuiOutlinedInput-root': {
+              border: '2px solid var(--primary-color)',
+              borderRadius: '4px',
+              borderColor: '#7b4eff',
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                border: '2px solid var(--primary-color)',
+                borderColor: '#7b4eff',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                border: '2px solid var(--primary-color)',
+                borderColor: '#7b4eff',
+              },
+            },
+            minWidth: { xs: '100%', md: 200 },
+          }}
         >
           <MenuItem disabled value="">
             <em>Select Product</em>
@@ -906,8 +848,10 @@ const Challan = () => {
               value={option.name}
               sx={{
                 '&:hover': {
-                  backgroundColor: 'primary.light',
-                }
+                  backgroundColor: 'var(--primary-color)',
+                },
+                border: '2px soilid var(--primary-color)',
+                borderTop: '2px solid transperent'
               }}
             >
               {option.name}
@@ -915,6 +859,8 @@ const Challan = () => {
           ))}
         </StyledSelect>
       </Box>
+
+      {/* Size Select */}
       <Box flex={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
         <StyledSelect
           fullWidth
@@ -923,7 +869,23 @@ const Challan = () => {
           disabled={!product.productName}
           displayEmpty
           renderValue={(value: unknown) => (value as string) || 'Select Size'}
-          sx={{ minWidth: { xs: '100%', md: 150 } }}
+          sx={{
+            height: '55px',
+            '& .MuiSelect-root': {
+              height: '55px',
+            },
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '4px',
+              borderColor: '#7b4eff',
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#7b4eff',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#7b4eff',
+              },
+            },
+            minWidth: { xs: '100%', md: 150 },
+          }}
         >
           <MenuItem disabled value="">
             <em>Select Size</em>
@@ -946,37 +908,78 @@ const Challan = () => {
         </StyledSelect>
       </Box>
     </Box>
+
   );
-  // const addSite = () => {
-  //   setFormData(prev => ({
-  //     ...prev,
-  //     sites: Array.isArray(prev.sites) ? [...prev.sites, initialSite] : [initialSite]
-  //   }));
-  // };
 
-  // const removeSite = (index: number) => {
-  //   setFormData(prev => ({
-  //     ...prev,
-  //     sites: Array.isArray(prev.sites) 
-  //       ? prev.sites.filter((_, i) => i !== index)
-  //       : [initialSite]
-  //   }));
-  // };
 
-  // const handleSiteChange = (index: number, field: keyof ISite, value: string) => {
-  //   setFormData(prev => {
-  //     const currentSites = Array.isArray(prev.sites) ? prev.sites : [initialSite];
-  //     const newSites = [...currentSites];
-  //     newSites[index] = {
-  //       ...newSites[index],
-  //       [field]: value
-  //     };
-  //     return {
-  //       ...prev,
-  //       sites: newSites
-  //     };
-  //   });
-  // };
+
+
+  const siteInput = (site: ISite) => (
+    <Box sx={{
+      display: 'flex',
+      gap: 2,
+      alignItems: 'center',
+      flexDirection: { xs: 'column', md: 'row' },
+      width: '100%',
+      mb: 2
+    }}>
+      {/* site name Select */}
+      <Box flex={2} sx={{ width: { xs: '100%', md: 'auto', margin: 'auto' } }}>
+        <StyledSelect
+          fullWidth
+          value={site?.siteName || ''}
+          onChange={(e: SelectChangeEvent<unknown>) => {
+            handleSiteChange(e.target.value);
+          }}
+          displayEmpty
+          renderValue={(value) => (value as string) || 'Select Site'}
+          sx={{
+            height: '55px',  // Set height to match other fields
+            '& .MuiSelect-root': {
+              height: '55px',  // Ensure the root select element has the correct height
+            },
+
+            '& .MuiOutlinedInput-root': {
+              border: '2px solid var(--primary-color)',
+              borderRadius: '4px',
+              borderColor: '#7b4eff',
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                border: '2px solid var(--primary-color)',
+                borderColor: '#7b4eff',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                border: '2px solid var(--primary-color)',
+                borderColor: '#7b4eff',
+              },
+            },
+            minWidth: { xs: '100%', md: 200 },
+          }}
+        >
+          <MenuItem disabled value="">
+            <em>Select Product</em>
+          </MenuItem>
+          {sites?.map((option) => (
+            <MenuItem
+              key={option.siteName}
+              value={option.siteName}
+              sx={{
+                '&:hover': {
+                  backgroundColor: 'var(--primary-color)',
+                },
+                border: '2px soilid var(--primary-color)',
+                borderTop: '2px solid transperent'
+              }}
+            >
+              {option.siteName}
+            </MenuItem>
+          ))}
+        </StyledSelect>
+      </Box>
+    </Box>
+
+  );
+
+
 
   // Add this configuration object
   const filterOperators = {
@@ -1044,18 +1047,19 @@ const Challan = () => {
     setCustomers([]);
 
     setProductOptions((prev) => {
-      const groupedProducts = customer.prizefix?.reduce((acc: any[], product: any) => {
+      const groupedProducts = customer.prizefix?.reduce((acc: any[], product: Iprizefix) => {
         const existing = acc.find(p => p.name === product.productName);
         if (existing) {
           if (!existing.sizes.includes(product.size)) {
             existing.sizes.push(product.size);
+            existing.rate = product.rate
           }
         } else {
           acc.push({ name: product.productName, sizes: [product.size] });
         }
         return acc;
       }, []) || []; // Use empty array as fallback if groupedProducts is undefined
-      
+
       return [
         ...prev,
         ...groupedProducts
@@ -1069,11 +1073,12 @@ const Challan = () => {
       const updatedForm = {
         ...prev,
         customerName: customer.customerName as string,
+        customerId: customer._id || '',
         mobileNumber: customer.mobileNumber as string,
       };
 
       // Check if customer.sites exists and has at least one site
-      if (customer.sites?.length || 0 < 2) {
+      if (customer.sites?.length || 0 < 1) {
         updatedForm.siteName = customer?.sites?.[0].siteName || '';
         updatedForm.siteAddress = customer?.sites?.[0].siteAddress || '';
       }
@@ -1091,19 +1096,35 @@ const Challan = () => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Button
-        fullWidth
-        variant="contained"
-        sx={{ bgcolor: '#7b4eff', color: 'white', mb: 2 }}
-        onClick={() => {
-          setIsEditMode(false);
-          setFormData(initialFormData);
-          setOpen(true);
-        }}
-      >
-        <PersonAddAltIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-        Add new Challan
-      </Button>
+      <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Button
+          variant="contained"
+          sx={{ bgcolor: 'var(--error-bg-dark)', color: 'white', mb: 2 }}
+          onClick={() => {
+            setIsEditMode(false);
+            setFormData({ ...initialFormData, type: "Return" });
+            setOpen(true);
+          }}
+        >
+          <ArrowBackIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+          <FireTruckIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1, transform: 'scaleX(-1)' }} />
+          Add new Return Challan
+        </Button>
+
+        <Button
+          variant="contained"
+          sx={{ bgcolor: 'var(--success-color)', color: 'white', mb: 2 }}
+          onClick={() => {
+            setIsEditMode(false);
+            setFormData(initialFormData);
+            setOpen(true);
+          }}
+        >
+          <FireTruckIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+          <ArrowForwardIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+          Add new Delivery Challan
+        </Button>
+      </Box>
 
       <Modal
         open={open}
@@ -1119,35 +1140,78 @@ const Challan = () => {
             <Stack spacing={2}>
               {/* First Row */}
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                <Box flex={1}>
+
+                <Box flex={1} sx={{
+                  position: 'relative',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  width: '100%',
+                  margin: 'auto',
+                  '& .MuiBox-root': {
+                    margin: 'auto'
+                  },
+                }}>
                   <TextField
                     label="Customer Name"
                     value={searchQuery}
+                    className="customer-name-input"
                     onChange={handleCustomerSearchChange}
                     fullWidth
                     required
                     autoComplete="on"
                     variant="outlined"
                     size="small"
+                    sx={{
+                      height: '55px',
+                      '& .MuiInputBase-root': {
+                        height: '55px',
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '4px',
+                        borderColor: '#7b4eff',
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#7b4eff',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#7b4eff',
+                        },
+                      },
+                    }}
                   />
                   {customers.length > 0 && (
-                    <Paper sx={{ mt: 1, maxHeight: 200, overflowY: 'auto' }}>
+                    <Paper
+                      sx={{
+                        position: 'absolute',
+                        top: '73%',
+                        left: 0,
+                        right: 0,
+                        zIndex: 10,
+                        mt: 1,
+                        maxHeight: 200,
+                        border: '2px solid var(--primary-color)',
+                        borderTop: 'none',
+                        overflowY: 'auto',
+                        backgroundColor: 'var(--surface-light)',
+                      }}
+                    >
                       {customers.map((customer) => (
                         <Box
-                          key={customer._id}  // Use customer._id instead of customer.id
+                          key={customer._id}
                           sx={{
                             p: 1,
                             cursor: 'pointer',
-                            '&:hover': { backgroundColor: 'lightgray' }
+                            '&:hover': { backgroundColor: 'lightgray' },
                           }}
                           onClick={() => handleCustomerSelect(customer)}
                         >
-                          {customer.customerName}  {/* Display customerName */}
+                          {customer.customerName} {/* Display customerName */}
                         </Box>
                       ))}
                     </Paper>
                   )}
                 </Box>
+
 
                 <Box flex={1}>
                   <FormInput
@@ -1169,193 +1233,179 @@ const Challan = () => {
                   />
                 </Box>
                 <Box flex={1}>
-                <FormInput
-                  name="date"
-                  label="Date"
-                  type="date"
-                  value={formData.date.toString().split('T')[0]}
-                  onChange={handleChange}
-                  required
-                />
-              </Box>
-            </Stack>
-
-            {/* Second Row */}
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.type === 'Return'}
-                    onChange={handleToggleChange}
-                    color="primary"
+                  <FormInput
+                    name="date"
+                    label="Date"
+                    type="date"
+                    value={formData.date.toString().split('T')[0]}
+                    onChange={handleChange}
+                    required
                   />
-                }
-                label={formData.type === 'Return' ? 'Return Challan' : 'Delivery Challan'}
-              />
-              <Box flex={1}>
-                <FormInput
-                  name="siteName"
-                  label="Site Name"
-                  value={formData.siteName}
-                  onChange={handleChange}
-                  required
-                />
-              </Box>
-              <Box flex={1}>
-                <FormInput
-                  name="siteAddress"
-                  label="Site Address"
-                  value={formData.siteAddress}
-                  onChange={handleChange}
-                  required
-                />
-              </Box>
-            </Stack>
-
-            {/* 3 Row */}
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <Box flex={1}>
-                <FormInput
-                  name="loading"
-                  label="Loading"
-                  value={formData.loading.toString()}
-                  onChange={handleChange}
-                  type='number'
-                />
-              </Box>
-              <Box flex={1}>
-                <FormInput
-                  name="unloading"
-                  label="Unloading"
-                  value={formData.unloading.toString()}
-                  onChange={handleChange}
-                  type='number'
-                />
-              </Box>
-              <Box flex={1}>
-                <FormInput
-                  name="transportCharge"
-                  label="Transport Charge"
-                  value={formData.transportCharge.toString()}
-                  onChange={handleChange}
-                 type='number'
-                />
-              </Box>
-            </Stack>
-
-            {/* Products Section */}
-            <Paper sx={{ p: 3, mt: 3 }}>
-              <Typography variant="h6" sx={{ mb: 3, color: 'primary.main' }}>
-                Products
-              </Typography>
-              <Stack spacing={2}>
-                {formData.products.map((product, index) => (
-                  <Paper
-                    key={index}
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      '&:hover': {
-                        boxShadow: 1
-                      }
-                    }}
-                  >
-                    <Stack
-                      direction={{ xs: 'column', md: 'row' }}
-                      spacing={2}
-                      alignItems="center"
-                      position="relative"
-                    >
-                      <Box flex={2}>
-                        {productInput(index, product)}
-                      </Box>
-                      <Box flex={1}>
-                        <FormInput
-                          name={`products.${index}.quantity`}
-                          label="Quantity"
-                          type="number"
-                          value={product.quantity?.toString()}
-                          onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
-                          required
-                        />
-                      </Box>
-                      <Box flex={1}>
-                        <FormInput
-                          name={`products.${index}.rate`}
-                          label="Rate"
-                          type="number"
-                          value={product.rate?.toString()}
-                          onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
-                          required
-                        />
-                      </Box>
-                      <Box
-                        flex={1}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end'
-                        }}
-                      >
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                          Amount: ₹{Number(product.amount).toFixed(2)}
-                        </Typography>
-                      </Box>
-                      {formData.products.length > 1 && (
-                        <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-                          <IconButton
-                            onClick={() => removeProduct(index)}
-                            color="error"
-                            size="small"
-                            sx={{
-                              '&:hover': {
-                                backgroundColor: 'error.lighter'
-                              }
-                            }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      )}
-                    </Stack>
-                  </Paper>
-                ))}
+                </Box>
               </Stack>
-              <Button
-                onClick={addProduct}
-                startIcon={<AddIcon />}
-                variant="outlined"
-                sx={{ mt: 2 }}
-              >
-                Add Product
-              </Button>
-            </Paper>
 
-            {/* Totals Section */}
-            <Paper sx={{ p: 2, mt: 3 }}>
-              <Stack spacing={1}>
+              {/* Second Row */}
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                <Box flex={1}>
+                  {siteInput(sites[0])}
+                </Box>
+                <Box flex={1}>
+                  <FormInput
+                    name="siteAddress"
+                    label="Site Address"
+                    value={formData.siteAddress}
+                    onChange={handleChange}
+                    required
+                  />
+                </Box>
+              </Stack>
 
-                <Typography variant="h6">
-                  Total Amount: ₹{Number(formData.totalAmount)?.toFixed(2)}
+              {/* 3 Row */}
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                <Box flex={1}>
+                  <FormInput
+                    name="loading"
+                    label="Loading"
+                    value={formData.loading.toString()}
+                    onChange={handleChange}
+                    type='number'
+                  />
+                </Box>
+                <Box flex={1}>
+                  <FormInput
+                    name="unloading"
+                    label="Unloading"
+                    value={formData.unloading.toString()}
+                    onChange={handleChange}
+                    type='number'
+                  />
+                </Box>
+                <Box flex={1}>
+                  <FormInput
+                    name="transportCharge"
+                    label="Transport Charge"
+                    value={formData.transportCharge.toString()}
+                    onChange={handleChange}
+                    type='number'
+                  />
+                </Box>
+              </Stack>
+
+              {/* Products Section */}
+              <Paper sx={{ p: 3, mt: 3 }}>
+                <Typography variant="h6" sx={{ mb: 3, color: 'var(--primary-dark)' }}>
+                  Products
                 </Typography>
-              </Stack>
-            </Paper>
+                <Stack spacing={2}>
+                  {formData.products.map((product, index) => (
+                    <Paper
+                      key={index}
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        top: '55%',
+                        borderRadius: 1,
+                        '&:hover': {
+                          boxShadow: 1
+                        }
+                      }}
+                    >
+                      <Stack
+                        direction={{ xs: 'column', md: 'row' }}
+                        spacing={2}
+                        alignItems="center"
+                        position="relative"
+                      >
+                        <Box flex={2}>
+                          {productInput(index, product)}
+                        </Box>
+                        <Box flex={1}>
+                          <FormInput
+                            name={`products.${index}.quantity`}
+                            label="Quantity"
+                            type="number"
+                            value={product.quantity?.toString()}
+                            onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
+                            required
+                          />
+                        </Box>
+                        <Box flex={1}>
+                          <FormInput
+                            name={`products.${index}.rate`}
+                            label="Rate"
+                            type="number"
+                            value={product.rate?.toString()}
+                            onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
+                            required
+                          />
+                        </Box>
+                        <Box
+                          flex={1}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end'
+                          }}
+                        >
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                            Amount: ₹{Number(product.amount).toFixed(2)}
+                          </Typography>
+                        </Box>
+                        {formData.products.length > 1 && (
+                          <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+                            <IconButton
+                              onClick={() => removeProduct(index)}
+                              color="error"
+                              size="small"
+                              sx={{
+                                '&:hover': {
+                                  backgroundColor: 'error.lighter'
+                                }
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+                <Button
+                  onClick={addProduct}
+                  startIcon={<AddIcon />}
+                  variant="outlined"
+                  sx={{ mt: 2 }}
+                >
+                  Add Product
+                </Button>
+              </Paper>
 
-            {/* Action Buttons */}
-            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
-              <Button onClick={handleClose} variant="contained" color="error">
-                Cancel
-              </Button>
-              <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
-                {isEditMode ? 'Update Purchase' : 'Save Purchase'}
-              </Button>
+              {/* Totals Section */}
+              <Paper sx={{ p: 2, mt: 3 }}>
+                <Stack spacing={1}>
+
+                  <Typography variant="h6">
+                    Total Amount: ₹{Number(formData.totalAmount)?.toFixed(2)}
+                  </Typography>
+                </Stack>
+              </Paper>
+
+              {/* Action Buttons */}
+              <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
+                <Button onClick={handleClose} variant="contained" color="error">
+                  Cancel
+                </Button>
+                <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
+                  {isEditMode ? 'Update Purchase' : 'Save Purchase'}
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
-        </Form>
-    </Box>
+          </Form>
+
+        </Box>
       </Modal >
 
       <Dialog

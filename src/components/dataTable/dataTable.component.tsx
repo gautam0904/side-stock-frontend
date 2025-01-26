@@ -1,100 +1,104 @@
 import React, { useState, useRef } from 'react';
-import { Box, Button, ButtonGroup, CircularProgress, Paper } from '@mui/material';
-import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar, GridToolbarColumnsButton, GridToolbarContainer, GridToolbarFilterButton, GridToolbarProps } from '@mui/x-data-grid';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import IconButton from '@mui/material/IconButton';
-import jsPDF from 'jspdf';
-import { IBill } from '@pages/bill/bill.page';
+import {
+  Box,
+  Button,
+  ButtonGroup,
+  CircularProgress,
+  Grid,
+  Paper,
+  Typography,
+} from '@mui/material';
+import {
+  DataGrid,
+  GridColDef,
+  GridToolbarColumnsButton,
+  GridToolbarContainer,
+  GridToolbarFilterButton,
+  GridFilterModel,
+  GridColumnVisibilityModel,
+} from '@mui/x-data-grid';
+
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import ShareIcon from '@mui/icons-material/Share';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
-// Custom Toolbar for each table (month-year)
+import { v4 as uuidv4 } from 'uuid';
 
-interface CustomToolbarProps extends GridToolbarProps {
-  month: string;
-  year: number;
-  downloadPDF: (month: string, year: number) => void;
+interface RowData {
+  id?: string;
+  productName: string;
+  quantity: number;
+  rate?: number;
+  amount?: number | string;
+  month?: number;
+  year?: number;
+  previousRestBill?: number;
+  startingDate?: string;
+  endingDate?: string;
+  dayCount?: string | number;
+  // Add more fields if needed
+  [key: string]: any;
 }
-// const CustomToolbar: React.FC<CustomToolbarProps> = ({ month, year, downloadPDF }) => {
-//   // Correctly type the `onClick` handler
-//   const handleDownloadClick: React.MouseEventHandler<HTMLButtonElement> = () => {
-//     downloadPDF(month, year);
-//   };
 
-//   const handleShareClick: React.MouseEventHandler<HTMLButtonElement> = () => {
-//     const url = `https://wa.me/?text=Check%20out%20this%20bill%20for%20${month}%20${year}!`;
-//     window.open(url, '_blank');
-//   };
+interface CommonDataTableProps {
+  rows: RowData[];
+  loading: boolean;
+}
 
-//   return (
-//     <Box sx={{ padding: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-//       <ButtonGroup variant="contained" sx={{ gap: 1 }}>
-//         <Button
-//           onClick={handleDownloadClick}
-//           startIcon={<FileDownloadIcon />}
-//           sx={{ bgcolor: '#c60055', color: 'white' }}
-//         >
-//           Download PDF
-//         </Button>
-//         <Button
-//           onClick={handleShareClick}
-//           startIcon={<ShareIcon />}
-//           sx={{ bgcolor: '#25D366', color: 'white' }}
-//         >
-//           Share on WhatsApp
-//         </Button>
-//       </ButtonGroup>
-//       <span>{`${month} ${year}`}</span>
-//     </Box>
-//   );
-// };
+const CommonDataTable: React.FC<CommonDataTableProps> = ({
+  rows = [
+    {
+      productName: 'Product A',
+      quantity: 5,
+      rate: 100,
+      amount: 15999.999994212963, // Could also be a string
+      month: 1,
+      year: 2024,
+      previousRestBill: 15999.999994212963,
+      startingDate: '2024-01-01T00:00:00.000Z',
+      endingDate: '2024-01-30T18:30:00.000Z',
+      dayCount: 30.770833333333332, // stored as string
+    },
+  ],
+  loading,
+}) => {
+  const [gridFilterModel, setGridFilterModel] = useState<GridFilterModel>({
+    items: [],
+  });
+  const [columnVisibility, setColumnVisibility] = useState<GridColumnVisibilityModel>({});
+  const gridRef = useRef<HTMLDivElement | null>(null);
 
-
-const CommonDataTable = ({ rows, loading, handleEditClick, handleDeleteClick }: { rows: any, loading: any, handleEditClick: any, handleDeleteClick: any }) => {
-  const [gridFilterModel, setGridFilterModel] = useState({});
-  const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
-  const gridRef = useRef(null);
+  const assignUniqueIds = (data: RowData[]) => {
+    return data.map((row, index) => ({
+      no: index + 1,
+      ...row,
+      id: uuidv4(),
+    }));
+  };
+  const rowsWithIds = assignUniqueIds(rows);
 
   const columns: GridColDef[] = [
     {
-      field: 'expandButton',
-      headerName: '',
-      width: 60,
-      sortable: false,
-      renderCell: (params: GridRenderCellParams) => (
-        <IconButton
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          <KeyboardArrowDownIcon />
-        </IconButton>
-      )
+      field: 'no',
+      headerName: 'No',
+      width: 70,
     },
-    { field: 'no', headerName: 'No', width: 70 },
-    { field: 'billName', headerName: 'Bill Name', width: 130 },
-    { field: 'mobileNumber', headerName: 'Mobile Number', width: 130 },
-    { field: 'partnerName', headerName: 'Partner Name', width: 130 },
-    { field: 'partnerMobileNumber', headerName: 'Partner MobileNumber', width: 130 },
     {
-      field: 'date',
-      headerName: 'Date',
+      field: 'productName',
+      headerName: 'Product Name',
       width: 130,
-      valueFormatter: (params: any) => {
-        try {
-          const date = new Date(params);
-          return date.toLocaleDateString('en-GB');
-        } catch (error) {
-          console.error('Date parsing error:', error);
-          return params?.value || '';
-        }
-      }
     },
-    { field: 'productName', headerName: 'Product Name', width: 130 },
-    { field: 'quantity', headerName: 'Quantity', width: 130 },
-    { field: 'rate', headerName: 'Rate', width: 130 },
+    {
+      field: 'quantity',
+      headerName: 'Quantity',
+      width: 130,
+    },
+    {
+      field: 'rate',
+      headerName: 'Rate',
+      width: 130,
+    },
     {
       field: 'startingDate',
       headerName: 'Starting Date',
@@ -128,73 +132,35 @@ const CommonDataTable = ({ rows, loading, handleEditClick, handleDeleteClick }: 
       headerName: 'Day',
       width: 130,
       valueFormatter: (params: any) => {
-        try {
-          return Number(params).toFixed(0);
-        } catch (error) {
-          console.error('Day parsing error:', error);
-          return params?.value || '';
-        }
-      }
+        const parsed = parseFloat(params);
+        return Math.floor(parsed);
+      },
     },
-    { field: 'amount', headerName: 'Amount', width: 130 },
+    {
+      field: 'amount',
+      headerName: 'Amount',
+      width: 130,
+
+      valueFormatter: (params: any) => {
+        const numericVal = parseFloat(params);
+        return numericVal.toFixed(2);
+      },
+    },
   ];
 
-  // Group the rows by month and year
-  const groupedRows = rows.reduce((acc: any, row: any) => {
-    const month = row.month;
-    const year = row.year;
-    if (!acc[`${year}-${month}`]) {
-      acc[`${year}-${month}`] = [];
+  const groupedRows = rowsWithIds.reduce((acc: any, row: RowData) => {
+    const m = row.month || 0;
+    const y = row.year || 0;
+    const groupKey = `${y}-${m}`;
+    if (!acc[groupKey]) {
+      acc[groupKey] = [];
     }
-    acc[`${year}-${month}`].push(row);
+    acc[groupKey].push(row);
     return acc;
   }, {});
 
-  // Download the current month's data as PDF
-  // const downloadPDF = (month: string, year: number) => {
-  //   const doc = new jsPDF();
-
-  //   // Add title
-  //   doc.setFontSize(16);
-  //   doc.text(`${month} ${year} Purchase List`, 14, 15);
-
-  //   // Prepare the data for the table
-  //   const tableData = groupedRows[`${year}-${month}`].map((item: any) => [
-  //     item.no,
-  //     item.billName,
-  //     item.mobileNumber,
-  //     item.partnerName,
-  //     item.partnerMobileNumber,
-  //     item.date,
-  //     item.productName,
-  //     item.quantity,
-  //     item.rate,
-  //     item.startingDate,
-  //     item.endingDate,
-  //     item.dayCount,
-  //     item.amount,
-  //   ]);
-
-  //   // Add the table to PDF
-  //   doc.autoTable({
-  //     head: [
-  //       [
-  //         'No', 'Bill Name', 'Mobile Number', 'Partner Name', 'Partner MobileNumber',
-  //         'Date', 'Product Name', 'Quantity', 'Rate', 'Starting Date', 'Ending Date', 'Day Count', 'Amount'
-  //       ]
-  //     ],
-  //     body: tableData,
-  //     startY: 25,
-  //     styles: { fontSize: 8 },
-  //     headStyles: { fillColor: [123, 78, 255] },
-  //   });
-
-  //   // Save the PDF
-  //   doc.save(`${month}_${year}_purchases_list.pdf`);
-  // };
-  const downloadPDF = (visibleColumns: any[]) => {
+  const downloadPDF = (visibleColumns: GridColDef[]) => {
     const doc = new jsPDF();
-
     doc.setFontSize(16);
     doc.setTextColor(123, 78, 255);
     doc.text('Purchase List', 14, 15);
@@ -203,419 +169,304 @@ const CommonDataTable = ({ rows, loading, handleEditClick, handleDeleteClick }: 
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
 
-    const headers = visibleColumns.map(col => col.headerName);
-    const keys = visibleColumns.map(col => col.field);
+    const headers = visibleColumns.map((col) => col.headerName ?? col.field);
+    const keys = visibleColumns.map((col) => col.field);
 
-    const tableData = bill.map((purchase: any) =>
-        keys.map(key => {
-            switch (key) {
-                case 'amount':
-                case 'totalAmount':
-                case 'sgst':
-                case 'cgst':
-                case 'igst':
-                    const value = purchase[key] || 0;
-                    return { content: Number(value).toFixed(2), styles: { halign: 'right' } };
-                case 'date':
-                    return new Date(purchase[key]).toLocaleDateString('en-GB');
-                default:
-                    return purchase[key]?.toString() || '';
+    const tableData = rowsWithIds.map((row: any) =>
+      keys.map((key) => {
+        // Some special formatting for certain fields
+        switch (key) {
+          case 'amount':
+          case 'rate':
+          case 'totalAmount': {
+            const value = parseFloat(row[key] || 0);
+            return { content: value.toFixed(2), styles: { halign: 'right' } };
+          }
+          case 'startingDate':
+          case 'endingDate':
+          case 'date': {
+            if (row[key]) {
+              try {
+                return new Date(row[key]).toLocaleDateString('en-GB');
+              } catch {
+                return row[key];
+              }
             }
-        })
+            return '';
+          }
+          case 'dayCount': {
+            const value = parseFloat(row[key] || 0);
+            return Math.floor(value).toString();
+          }
+          default:
+            return row[key]?.toString() || '';
+        }
+      }),
     );
 
-    // Calculate totals for numeric columns
-    const totals: { [key: string]: number } = {};
-    const numericFields = ['amount', 'totalAmount', 'sgst', 'cgst', 'igst'];
-
-    keys.forEach((key) => {
-        if (numericFields.includes(key)) {
-            totals[key] = bill.reduce((sum, purchase) => sum + (purchase[key] || 0), 0);
-        }
+    doc.autoTable({
+      head: [headers],
+      body: tableData,
+      startY: 30,
+      styles: { fontSize: 9 },
+      headStyles: {
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
     });
 
-    // Prepare footer row with styled totals
-    const footerRow = keys.map((key, index) => {
-        if (numericFields.includes(key)) {
-            const value = totals[key] || 0;
-            return Number(value).toFixed(2);
-        }
-        if (index === 0) {
-            return 'Total';
-        }
-        return '';
-    });
-
-    // Calculate rows per page based on content height
-    const calculateRowsPerPage = (firstPageData: any[]) => {
-        const testTable = doc.autoTable({
-            head: [headers],
-            body: [firstPageData[0]],
-            startY: 25,
-            styles: {
-                fontSize: 9,
-                cellPadding: { left: 4, right: 4, top: 2, bottom: 2 },
-                lineWidth: 0,
-            }
-        });
-
-        const pageHeight = doc.internal.pageSize.height;
-        const tableRowHeight = ((testTable as any).lastAutoTable.finalY - 25) / 1;
-        const availableHeight = pageHeight - 20;
-        return Math.floor(availableHeight / tableRowHeight);
-    };
-
-    // Calculate dynamic rows per page
-    const rowsPerPage = calculateRowsPerPage(tableData);
-
-    // Split data into pages using calculated rowsPerPage
-    const pages = [];
-    for (let i = 0; i < tableData.length; i += rowsPerPage) {
-        pages.push(tableData.slice(i, i + rowsPerPage));
-    }
-
-    let startY = 25;
-    let grandTotals: { [key: string]: number } = {};
-
-    // Process each page
-    pages.forEach((pageData, pageIndex) => {
-        // Calculate page totals
-        const pageTotals: { [key: string]: number } = {};
-        keys.forEach((key) => {
-            if (numericFields.includes(key)) {
-                pageTotals[key] = pageData.reduce((sum, row) => {
-                    // Extract numeric value from the cell content
-                    const value = typeof row[keys.indexOf(key)] === 'object'
-                        ? Number(row[keys.indexOf(key)].content)
-                        : Number(row[keys.indexOf(key)]);
-                    return sum + (isNaN(value) ? 0 : value);
-                }, 0);
-                grandTotals[key] = (grandTotals[key] || 0) + pageTotals[key];
-            }
-        });
-
-        // Add page data with page totals
-        doc.autoTable({
-            head: [headers],
-            body: pageData,
-            startY: startY,
-            styles: {
-                fontSize: 9,
-                cellPadding: { left: 4, right: 4, top: 2, bottom: 2 },
-                lineWidth: 0,
-            },
-            headStyles: {
-                fillColor: [123, 78, 255],
-                textColor: [255, 255, 255],
-                fontStyle: 'bold',
-                fontSize: 11
-            },
-        });
-
-        startY = (doc as any).lastAutoTable.finalY + 10;
-
-        // Add new page if not the last page
-        if (pageIndex < pages.length - 1) {
-            doc.addPage();
-            startY = 25;
-        }
-    });
-
-    // Add page numbers
+    // Page numbers
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(
-            `Page ${i} of ${pageCount}`,
-            doc.internal.pageSize.width / 2,
-            doc.internal.pageSize.height - 15,
-            { align: 'center' }
-        );
+      doc.setPage(i);
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(
+        `Page ${i} of ${pageCount}`,
+        doc.internal.pageSize.width / 2,
+        doc.internal.pageSize.height - 10,
+        { align: 'center' },
+      );
     }
 
     doc.save('purchases-list.pdf');
-};
+    const pdfBlob = doc.output('blob');
+    return pdfBlob
+  };
 
-  const CustomToolbar = () => {
-    const handleExport = (type: string) => {
-      if (type === 'pdf') {
-        const visibleColumns = columns.filter(col => {
-          return columnVisibility[col.field] !== false && col.field !== 'actions';
-        });
-        downloadPDF(visibleColumns);
-      }
+  const handleShareClick = () => {
+    const api_key= "596258636375658";
+    const api_secret= "PBWzlNAuSmudhmV7BpGB-KHFk3k"
+    const cloudName = 'dcvx4tnwp';
+
+    const [uploading, setUploading] = useState(false);
+
+    const generatePdfBlob = async () => {
+      const doc = new jsPDF();
+      doc.setFontSize(20);
+      doc.text('Hello World from jsPDF!', 10, 20);
+
+      doc.setFontSize(10);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 10, 30);
+
+      // Simple table example
+      doc.autoTable({
+        head: [['Column 1', 'Column 2']],
+        body: [
+          ['Row 1 Col 1', 'Row 1 Col 2'],
+          ['Row 2 Col 1', 'Row 2 Col 2'],
+        ],
+        startY: 40,
+      });
+
+      const visibleColumns = columns.filter((col) => columnVisibility[col.field] !== false);
+
+      const pdfBlob = downloadPDF(visibleColumns);
+      return pdfBlob;
     };
 
-    const handleShareClick = () => {
-      // Generate the PDF content using jsPDF
-      const visibleColumns = columns.filter(col => {
-        return columnVisibility[col.field] !== false && col.field !== 'actions';
-      });
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.setTextColor(123, 78, 255);
-      doc.text('Purchase List', 14, 15);
-  
-      doc.setFontSize(8);
-      doc.setTextColor(100);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
-  
-      const headers = visibleColumns.map(col => col.headerName);
-      const keys = visibleColumns.map(col => col.field);
-  
-      const tableData = bill.map((purchase: any) =>
-          keys.map(key => {
-              switch (key) {
-                  case 'amount':
-                  case 'totalAmount':
-                  case 'sgst':
-                  case 'cgst':
-                  case 'igst':
-                      const value = purchase[key] || 0;
-                      return { content: Number(value).toFixed(2), styles: { halign: 'right' } };
-                  case 'date':
-                      return new Date(purchase[key]).toLocaleDateString('en-GB');
-                  default:
-                      return purchase[key]?.toString() || '';
-              }
-          })
-      );
-  
-      // Calculate totals for numeric columns
-      const totals: { [key: string]: number } = {};
-      const numericFields = ['amount', 'totalAmount', 'sgst', 'cgst', 'igst'];
-  
-      keys.forEach((key) => {
-          if (numericFields.includes(key)) {
-              totals[key] = bill.reduce((sum, purchase) => sum + (purchase[key] || 0), 0);
+    const uploadToCloudinary = async (pdfBlob: Blob) => {
+      setUploading(true);
+
+      const formData = new FormData();
+      formData.append('file', pdfBlob);
+      // formData.append('upload_preset', unsignedUploadPreset) 
+
+      try {
+        const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+          {
+            method: 'POST',
+            body: formData,
           }
-      });
-  
-      // Prepare footer row with styled totals
-      const footerRow = keys.map((key, index) => {
-          if (numericFields.includes(key)) {
-              const value = totals[key] || 0;
-              return Number(value).toFixed(2);
-          }
-          if (index === 0) {
-              return 'Total';
-          }
-          return '';
-      });
-  
-      // Calculate rows per page based on content height
-      const calculateRowsPerPage = (firstPageData: any[]) => {
-          const testTable = doc.autoTable({
-              head: [headers],
-              body: [firstPageData[0]],
-              startY: 25,
-              styles: {
-                  fontSize: 9,
-                  cellPadding: { left: 4, right: 4, top: 2, bottom: 2 },
-                  lineWidth: 0,
-              }
-          });
-  
-          const pageHeight = doc.internal.pageSize.height;
-          const tableRowHeight = ((testTable as any).lastAutoTable.finalY - 25) / 1;
-          const availableHeight = pageHeight - 20;
-          return Math.floor(availableHeight / tableRowHeight);
-      };
-  
-      // Calculate dynamic rows per page
-      const rowsPerPage = calculateRowsPerPage(tableData);
-  
-      // Split data into pages using calculated rowsPerPage
-      const pages = [];
-      for (let i = 0; i < tableData.length; i += rowsPerPage) {
-          pages.push(tableData.slice(i, i + rowsPerPage));
+        );
+        const data = await response.json();
+
+        setUploading(false);
+        if (data.secure_url) {
+          // This is your hosted PDF URL
+          return data.secure_url;
+        } else {
+          console.error('Cloudinary upload error', data);
+          return null;
+        }
+      } catch (error) {
+        console.error('Upload to Cloudinary failed', error);
+        setUploading(false);
+        return null;
       }
-  
-      let startY = 25;
-      let grandTotals: { [key: string]: number } = {};
-  
-      // Process each page
-      pages.forEach((pageData, pageIndex) => {
-          // Calculate page totals
-          const pageTotals: { [key: string]: number } = {};
-          keys.forEach((key) => {
-              if (numericFields.includes(key)) {
-                  pageTotals[key] = pageData.reduce((sum : any, row: any) => {
-                      // Extract numeric value from the cell content
-                      const value = typeof row[keys.indexOf(key)] === 'object'
-                          ? Number(row[keys.indexOf(key)].content)
-                          : Number(row[keys.indexOf(key)]);
-                      return sum + (isNaN(value) ? 0 : value);
-                  }, 0);
-                  grandTotals[key] = (grandTotals[key] || 0) + pageTotals[key];
-              }
-          });
-  
-          // Add page data with page totals
-          doc.autoTable({
-              head: [headers],
-              body: pageData,
-              startY: startY,
-              styles: {
-                  fontSize: 9,
-                  cellPadding: { left: 4, right: 4, top: 2, bottom: 2 },
-                  lineWidth: 0,
-              },
-              headStyles: {
-                  fillColor: [123, 78, 255],
-                  textColor: [255, 255, 255],
-                  fontStyle: 'bold',
-                  fontSize: 11
-              },
-          });
-  
-          startY = (doc as any).lastAutoTable.finalY + 10;
-  
-          // Add new page if not the last page
-          if (pageIndex < pages.length - 1) {
-              doc.addPage();
-              startY = 25;
-          }
-      });
-  
-      // Add page numbers
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-          doc.setPage(i);
-          doc.setFontSize(10);
-          doc.setTextColor(100);
-          doc.text(
-              `Page ${i} of ${pageCount}`,
-              doc.internal.pageSize.width / 2,
-              doc.internal.pageSize.height - 15,
-              { align: 'center' }
-          );
-      }
-  
-      // WhatsApp URL format for sharing files
-      const shareText = `Check out my bill for ${month} ${year}. Please find the attached PDF.`;
-      const whatsappUrl = `https://wa.me/${customerPhoneNumber}?text=${encodeURIComponent(shareText)}%20${encodeURIComponent(pdfBase64)}`;
-  
-      // Open WhatsApp in a new window/tab with the prefilled message
+    };
+    
+    const shareOnWhatsApp = (pdfUrl: string) => {
+      const shareText = `Hi! Here is the PDF link:\n ${pdfUrl}`;
+      const phoneNumber = '';
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(shareText)}`;
       window.open(whatsappUrl, '_blank');
     };
-  
+
+    // Combined function to handle "Generate PDF & Share"
+    const handleGenerateAndShare = async () => {
+      // 1) Generate PDF in memory
+      const pdfBlob = await generatePdfBlob();
+      if (!pdfBlob) return;
+
+      // 2) Upload to Cloudinary
+      const pdfUrl = await uploadToCloudinary(pdfBlob);
+      if (!pdfUrl) return;
+
+      // 3) Open WhatsApp with link
+      shareOnWhatsApp(pdfUrl);
+    };
+
+
+
+
+
+
+
+
+    const shareText = 'Check out my purchase list for the month!';
+    // Provide a phone number or leave it blank
+    const phoneNumber = '+919427173635';
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(shareText)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const CustomToolbar = (data: any) => {
+    const handleExportClick = () => {
+      const visibleColumns = columns.filter((col) => columnVisibility[col.field] !== false);
+      downloadPDF(visibleColumns);
+    };
 
     return (
-      <GridToolbarContainer sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <GridToolbarContainer
+        sx={{
+          p: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          bgcolor: '#f7f7f7',
+          borderRadius: 2,
+          boxShadow: 1,
+        }}
+      >
         <Box>
           <GridToolbarColumnsButton />
-          <GridToolbarFilterButton />
-          <Button
-            onClick={() => handleExport('pdf')}
-            startIcon={<FileDownloadIcon />}
-            size="small"
-            sx={{
-              ml: 1,
-              textTransform: 'none',
-              '&:hover': {
-                backgroundColor: 'primary.light',
-              }
-            }}
-          >
-            Export PDF
-          </Button>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#333' }}>
+            {`Month: ${new Date(Number(data.year), Number(data.month) - 1).toLocaleString('default', { month: 'long' })}, Year: ${data.year}`}
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ ml: 2 }}>
+            {`Previous Rest Amount: ₹${data.previousRestAmount.toFixed(2)}`}
+          </Typography>
+        </Box>
+
+        {/* Right section with Export and Share buttons */}
+        <Box>
+          <ButtonGroup variant="contained" sx={{ gap: 2 }}>
+            <Button
+              onClick={handleExportClick}
+              startIcon={<FileDownloadIcon />}
+              sx={{
+                bgcolor: '#7b4eff', // Using primary color
+                color: 'white',
+                '&:hover': { bgcolor: '#5a2dd6' }, // Hover effect with darker shade
+              }}
+            >
+              Export PDF
+            </Button>
+            <Button
+              onClick={handleShareClick}
+              startIcon={<WhatsAppIcon />}
+              sx={{
+                bgcolor: '#25D366', // WhatsApp green
+                color: 'white',
+                '&:hover': { bgcolor: '#128C7E' }, // Hover effect with darker WhatsApp green
+              }}
+            >
+              Share on WhatsApp
+            </Button>
+          </ButtonGroup>
         </Box>
       </GridToolbarContainer>
     );
   };
-
   return (
     <Box>
-      {/* Loop through each month and create a separate table */}
-      {Object.keys(groupedRows).map((key) => {
-        const [year, month] = key.split('-');
+      {Object.keys(groupedRows).map((groupKey) => {
+        const [year, month] = groupKey.split('-');
+        const monthYearRows = groupedRows[groupKey];
+        const previousRestAmount = monthYearRows[0]?.previousRestBill || 0;
+        const monthTotal = monthYearRows.reduce((sum: number, row: any) => sum + (row.amount || 0), 0);
+        const totalWithRest = previousRestAmount + monthTotal;
+
+        // Create the header content
+        const headerContent = `${new Date(Number(year), Number(month) - 1).toLocaleString('default', { month: 'long' })} ${year} - Previous Rest Amount: ${previousRestAmount.toFixed(2)}`;
+
         return (
-          <Box key={key} sx={{ marginBottom: 3 }}>
-            <Paper sx={{ padding: 2 }}>
-              <CustomToolbar month={month} year={parseInt(year)} downloadPDF={() => downloadPDF(month, parseInt(year))} />
-              {/* <DataGrid
-                rows={groupedRows[key]}
-                columns={columns}
-                loading={loading}
-                disableRowSelectionOnClick
-                {{
-                  Toolbar: () => <CustomToolbar month={month} year={Number(year)} downloadPDF={downloadPDF} />
-                }}
-                componentsProps={{
-                  toolbar: {
-                    month,
-                    year,
-                    downloadPDF
-                  }
-                }}
-                getRowId={(row: any) => row._id}
-                sx={{
-                  border: 0,
-                  '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f5f5f5',
-                  },
-                  '& .MuiDataGrid-cell:focus': {
-                    outline: 'none',
-                  },
-                }}
-                filterModel={gridFilterModel as any}
-                onFilterModelChange={(model) => setGridFilterModel(model)}
-                onColumnVisibilityModelChange={(newModel) => {
-                  setColumnVisibility(newModel);
-                }}
-                disableColumnFilter={false}
-                disableDensitySelector={true}
-                disableColumnSelector={false}
-                slots={{
-                  loadingOverlay: () => (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                      <CircularProgress color="primary" />
-                    </Box>
-                  ),
-                }}
-              /> */}
+          <Box border={'2px solid var(--primary-color)'} key={groupKey} sx={{ marginBottom: 3 }}>
+            <Paper sx={{ padding: 2, backgroundColor: 'var(--surface-light)' }}>
               <DataGrid
                 ref={gridRef}
-                rows={bill}
+                rows={monthYearRows}
                 columns={columns}
                 loading={loading}
+                columnVisibilityModel={columnVisibility}
+                onColumnVisibilityModelChange={(newModel) => setColumnVisibility(newModel)}
                 disableRowSelectionOnClick
-                getRowId={(row: any) => row._id}
+                hideFooterPagination={true}
                 sx={{
                   border: 0,
                   '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f5f5f5',
+                    backgroundColor: 'var(--background-light)',
                   },
                   '& .MuiDataGrid-cell:focus': {
                     outline: 'none',
                   },
                 }}
                 slots={{
-                  toolbar: CustomToolbar,
+                  toolbar: () => <CustomToolbar month={month} year={year} previousRestAmount={previousRestAmount} />,
                   loadingOverlay: () => (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: '100%',
+                      }}
+                    >
                       <CircularProgress color="primary" />
                     </Box>
                   ),
                 }}
-                filterModel={gridFilterModel}
-                onFilterModelChange={(model) => setGridFilterModel(model)}
-                onColumnVisibilityModelChange={(newModel) => {
-                  setColumnVisibility(newModel);
-                }}
-                disableColumnFilter={false}
-                disableDensitySelector={true}
-                disableColumnSelector={false}
+                getRowId={(row) => row.id!}
               />
+              <Box sx={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between', marginTop: 2
+              }}>
+                <Typography marginLeft={2} variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {`Total Due Amount: ₹${(previousRestAmount + monthTotal).toFixed(2)}`}
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {`Month Amount: ₹${(monthTotal).toFixed(2)}`}
+                </Typography>
+              </Box>
             </Paper>
           </Box>
         );
       })}
     </Box>
   );
-};
 
+
+
+
+
+
+};
 export default CommonDataTable;

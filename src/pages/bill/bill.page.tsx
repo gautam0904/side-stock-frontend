@@ -47,7 +47,9 @@ import { styled } from '@mui/material/styles';
 import PhotoIcon from '@mui/icons-material/Photo';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
-import { Iprizefix, ISite } from 'src/DTO/customer.dto';
+import { ICutomer, Iprizefix, ISite } from 'src/DTO/customer.dto';
+import CommonDataTable from '@components/dataTable/dataTable.component';
+import { customerService } from 'src/api/customer.service';
 
 declare module 'jspdf' {
     interface jsPDF {
@@ -55,25 +57,19 @@ declare module 'jspdf' {
     }
 }
 
-interface IProducts {
-    productName: string
-    quantity: Number;
-    rate: Number;
-    startingDate: Date;
-    endingDate: Date;
-    amount: Number;
-    size?: string;
+interface ISearchOption {
+    customerName?: string
+    startingDate?: Date;
+    endingDate?: Date;
+    site?: string;
 }
 
-const initialProduct: IProducts[] = [{
-    productName: '',
-    size: '',
-    quantity: 0,
-    rate: 0,
+const initialSearch: ISearchOption = {
+    customerName: '',
+    site: '',
     startingDate: new Date(),
     endingDate: new Date(),
-    amount: 0
-}];
+}
 
 const initialSite = {
     siteName: '',
@@ -94,7 +90,7 @@ export interface IBill {
     siteName: string;
     siteAddress: string;
     pancard: string;
-    products: IProducts[],
+    // products: IProducts[],
     serviceCharge: Number;
     damageCharge: Number;
     totalPayment: Number;
@@ -115,7 +111,7 @@ const initialFormData: IBill = {
     siteName: '',
     siteAddress: '',
     pancard: '',
-    products: initialProduct,
+    // products: initialProduct,
     serviceCharge: 0,
     damageCharge: 0,
     totalPayment: 0
@@ -160,8 +156,8 @@ const Bill = () => {
     const [open, setOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [billToDelete, setBillToDelete] = useState<string | null>(null);
-    const [bill, setBill] = useState<IBill[]>([]);
-    const [formData, setFormData] = useState<IBill>(initialFormData);
+    const [bill, setBill] = useState<IBill>([]);
+    const [formData, setFormData] = useState<ISearchOption>(initialSearch);
     const [isEditMode, setIsEditMode] = useState(false);
     const [loading, setLoading] = useState(false);
     const [shouldFetch, setShouldFetch] = useState(true);
@@ -174,124 +170,272 @@ const Bill = () => {
     });
     const gridRef = useRef<any>(null);
     const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
-    const [productOptions, setProductOptions] = useState<Array<{ name: string, sizes: string[] }>>([]);
-
-    const columns: GridColDef[] = [
+    const [productOptions, setProductOptions] = useState<Array<{ customerName: string, sites: string[] }>>([]);
+    const [bill2, setBill2] = useState([
         {
-            field: 'expandButton',
-            headerName: '',
-            width: 60,
-            sortable: false,
-            renderCell: (params: GridRenderCellParams) => (
-                <IconButton
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedProductIndex(params.row._id);
-                        setProductPopupOpen(true);
-                    }}
-                >
-                    <KeyboardArrowDownIcon />
-                </IconButton>
-            )
-        },
-        { field: 'no', headerName: 'No', width: 70 },
-        { field: 'billName', headerName: 'Bill Name', width: 130 },
-        { field: 'mobileNumber', headerName: 'Mobile Number', width: 130 },
-        { field: 'partnerName', headerName: 'Partner Name', width: 130 },
-        { field: 'partnerMobileNumber', headerName: 'Partner MobileNumber', width: 130 },
-        {
-            field: 'date',
-            headerName: 'Date',
-            width: 130,
-            valueFormatter: (params: any) => {
-                try {
-                    const date = new Date(params);
-                    return date.toLocaleDateString('en-GB');
-                } catch (error) {
-                    console.error('Date parsing error:', error);
-                    return params?.value || '';
+            "year": 2024,
+            "month": 1,
+            "totalAmount": 15999.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15999.999994212963,
+                    "month": 1,
+                    "year": 2024,
+                    "previousRestBill": 15999.999994212963,
+                    "startingDate": "2024-01-01T00:00:00.000Z",
+                    "endingDate": "2024-01-30T18:30:00.000Z",
+                    "dayCount": 30.770833333333332
                 }
-            }
+            ]
         },
-        { field: 'billTo', headerName: 'Bill To', width: 130 },
-        { field: 'reference', headerName: 'Reference', width: 130 },
-        { field: 'referenceMobileNumber', headerName: 'Reference MobileNumber', width: 130 },
-        { field: 'billAddress', headerName: 'bill Address', width: 130 },
-        { field: 'siteName', headerName: 'Site Name', width: 130 },
-        { field: 'siteAddress', headerName: 'Site Address', width: 130 },
-        { field: 'pancard', headerName: 'Pancard No', width: 150 },
-        { field: 'serviceCharge', headerName: 'Service Charge', width: 130 },
-        { field: 'damageCharge', headerName: 'Damage Charge No', width: 150 },
-        { field: 'totalPayment', headerName: 'Total Payment', width: 130 },
         {
-            field: 'actions',
-            headerName: '',
-            width: 60,
-            sortable: false,
-            renderCell: (params: GridRenderCellParams) => (
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                    <EditIcon fontSize="small" onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditClick(params.row)
-                    }} />
-                    <DeleteIcon fontSize="small" color="error" onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteClick(params.row._id)
-                    }} />
-                </Box>
-            )
+            "year": 2024,
+            "month": 2,
+            "totalAmount": 14999.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 14999.999994212963,
+                    "month": 2,
+                    "year": 2024,
+                    "previousRestBill": 30999.999988425927,
+                    "startingDate": "2024-01-31T18:30:00.000Z",
+                    "endingDate": "2024-02-28T18:30:00.000Z",
+                    "dayCount": 29
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 3,
+            "totalAmount": 15999.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15999.999994212963,
+                    "month": 3,
+                    "year": 2024,
+                    "previousRestBill": 46999.99998263889,
+                    "startingDate": "2024-02-29T18:30:00.000Z",
+                    "endingDate": "2024-03-30T18:30:00.000Z",
+                    "dayCount": 31
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 4,
+            "totalAmount": 15499.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15499.999994212963,
+                    "month": 4,
+                    "year": 2024,
+                    "previousRestBill": 62499.999976851854,
+                    "startingDate": "2024-03-31T18:30:00.000Z",
+                    "endingDate": "2024-04-29T18:30:00.000Z",
+                    "dayCount": 30
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 5,
+            "totalAmount": 15999.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15999.999994212963,
+                    "month": 5,
+                    "year": 2024,
+                    "previousRestBill": 78499.99997106481,
+                    "startingDate": "2024-04-30T18:30:00.000Z",
+                    "endingDate": "2024-05-30T18:30:00.000Z",
+                    "dayCount": 31
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 6,
+            "totalAmount": 15499.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15499.999994212963,
+                    "month": 6,
+                    "year": 2024,
+                    "previousRestBill": 88999.99996527778,
+                    "startingDate": "2024-05-31T18:30:00.000Z",
+                    "endingDate": "2024-06-29T18:30:00.000Z",
+                    "dayCount": 30
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 7,
+            "totalAmount": 15999.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15999.999994212963,
+                    "month": 7,
+                    "year": 2024,
+                    "previousRestBill": 104999.99995949074,
+                    "startingDate": "2024-06-30T18:30:00.000Z",
+                    "endingDate": "2024-07-30T18:30:00.000Z",
+                    "dayCount": 31
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 8,
+            "totalAmount": 15999.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15999.999994212963,
+                    "month": 8,
+                    "year": 2024,
+                    "previousRestBill": 120999.99995370371,
+                    "startingDate": "2024-07-31T18:30:00.000Z",
+                    "endingDate": "2024-08-30T18:30:00.000Z",
+                    "dayCount": 31
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 9,
+            "totalAmount": 15499.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15499.999994212963,
+                    "month": 9,
+                    "year": 2024,
+                    "previousRestBill": 136499.99994791666,
+                    "startingDate": "2024-08-31T18:30:00.000Z",
+                    "endingDate": "2024-09-29T18:30:00.000Z",
+                    "dayCount": 30
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 10,
+            "totalAmount": 15999.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15999.999994212963,
+                    "month": 10,
+                    "year": 2024,
+                    "previousRestBill": 152499.99994212962,
+                    "startingDate": "2024-09-30T18:30:00.000Z",
+                    "endingDate": "2024-10-30T18:30:00.000Z",
+                    "dayCount": 31
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 11,
+            "totalAmount": 15499.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15499.999994212963,
+                    "month": 11,
+                    "year": 2024,
+                    "previousRestBill": 167999.9999363426,
+                    "startingDate": "2024-10-31T18:30:00.000Z",
+                    "endingDate": "2024-11-29T18:30:00.000Z",
+                    "dayCount": 30
+                }
+            ]
+        },
+        {
+            "year": 2024,
+            "month": 12,
+            "totalAmount": 15999.999994212963,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 15999.999994212963,
+                    "month": 12,
+                    "year": 2024,
+                    "previousRestBill": 183999.99993055555,
+                    "startingDate": "2024-11-30T18:30:00.000Z",
+                    "endingDate": "2024-12-30T18:30:00.000Z",
+                    "dayCount": 31
+                }
+            ]
+        },
+        {
+            "year": 2025,
+            "month": 1,
+            "totalAmount": 21507.796708333335,
+            "products": [
+                {
+                    "productName": "Product A",
+                    "quantity": 5,
+                    "rate": 100,
+                    "amount": 11948.775949074074,
+                    "month": 1,
+                    "year": 2025,
+                    "previousRestBill": 145948.77587962963,
+                    "startingDate": "2024-12-31T18:30:00.000Z",
+                    "endingDate": "2025-01-23T16:02:28.484Z",
+                    "dayCount": 23.897551898148148
+                },
+                {
+                    "productName": "Product B",
+                    "quantity": 2,
+                    "rate": 200,
+                    "amount": 9559.02075925926,
+                    "month": 1,
+                    "year": 2025,
+                    "previousRestBill": 155507.7966388889,
+                    "startingDate": "2025-01-01T00:00:00.000Z",
+                    "endingDate": "2025-01-23T16:02:28.484Z",
+                    "dayCount": 23.66838523148148
+                }
+            ]
         }
-    ];
-
-      const handleProductChange = (index: number, field: keyof IProducts, value: any) => {
-        setFormData(prev => {
-          const newProducts = [...prev.products];
-          const updatedProduct = {
-            ...newProducts[index],
-            [field]: value
-          };
-    
-          // Immediately calculate amount when quantity or rate changes
-          if (field === 'quantity' || field === 'rate') {
-            updatedProduct.amount = Number(updatedProduct.quantity || 0) * Number(updatedProduct.rate || 0);
-          }
-    
-          newProducts[index] = updatedProduct;
-    
-          // Calculate totals
-          const subTotal = newProducts.reduce((sum, product) => sum + (Number(product.amount) || 0), 0);
-          const transportCost = Number(prev.transportAndCasting || 0);
-          const baseAmount = subTotal + transportCost;
-    
-         
-    
-          return {
-            ...prev,
-            products: newProducts,
-            amount: baseAmount,
-          };
-        });
-      };
-
-    const addProduct = () => {
-        setFormData(prev => ({
-            ...prev,
-            prizefix: [...(prev.prizefix || []), {
-                productName: '',
-                size: '',
-                rate: 0
-            }]
-        }));
-    };
-
-    const removeProduct = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            prizefix: prev.products.filter((_, i) => i !== index)
-        }));
-    };
+    ]);
+    const [customer, setCustomer] = useState<ICutomer>({})
 
     const fetchBills = useCallback(async () => {
+        debugger
         if (fetchInProgress.current || loading) return;
 
         try {
@@ -327,115 +471,35 @@ const Bill = () => {
         }
     }, [shouldFetch, fetchBills]);
 
+
+    useEffect(() => {
+        const fetchCustomer = async () => {
+            try {
+                const response = await customerService.getAllCustomers();
+                // Group products by name with their available sizes
+                const groupedProducts = response.data.products.reduce((acc: any[], product: ICutomer) => {
+                    // const existing = acc.find(p => p.customerName === product.customerName);
+                    // if (existing) {
+                    //     if (!existing.sites.includes(product.size)) {
+                    //         existing.sizes.push(product.size);
+                    //     }
+                    // } else {
+                    acc.push({ customerName: product.customerName, sites: product.sites });
+                    // }
+                    return acc;
+                }, []);
+                setProductOptions(groupedProducts);
+            } catch (error) {
+                toast.error('Failed to fetch products');
+            }
+        };
+        fetchCustomer();
+    }, []);
+
     const handleClose = () => {
         setOpen(false);
         setIsEditMode(false);
-        setFormData(initialFormData);
-    };
-
-    const fetchGSTDetails = async (gstNumber: string) => {
-        try {
-            // Using a different free GST API
-            const response = await fetch(`https://api.gstincheck.co.in/v1/verify/${gstNumber}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': '4ff236814d3317fdd0479ca80b1b4cd4'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch GST details');
-            }
-
-            const data = await response.json();
-
-            // Check if the API call was successful
-            if (data && data.success) {
-                return {
-                    legalName: data.data.lgnm || '',
-                    tradeName: data.data.tradeNam || '',
-                    status: data.data.sts || ''
-                };
-            } else {
-                throw new Error(data.message || 'Failed to fetch GST details');
-            }
-        } catch (error) {
-            console.error('Error fetching GST details:', error);
-            return null;
-        }
-    };
-
-    const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-
-        // Convert GST number to uppercase
-        const processedValue = name === 'GSTnumber' ? value.toUpperCase() : value;
-
-        // Special handling for GST number
-        if (name === 'GSTnumber' && processedValue.length === 15) {
-            try {
-                setLoading(true);
-
-                // Fetch GST details
-                const gstDetails = await fetchGSTDetails(processedValue);
-
-                if (gstDetails) {
-                    // Check if the GST status is active
-                    if (gstDetails.status.toLowerCase() !== 'active') {
-                        toast.error('GST number is not active');
-                    }
-
-                    setFormData(prev => ({
-                        ...prev,
-                        [name]: processedValue,
-                        companyName: gstDetails.tradeName || gstDetails.legalName || '',
-                        supplierName: gstDetails.legalName || ''
-                    }));
-
-                    toast.success('GST details fetched successfully');
-                } else {
-                    toast.error('Could not fetch GST details');
-                }
-            } catch (error: any) {
-                toast.error(error.message || 'Error fetching GST details');
-                console.error('GST fetch error:', error);
-            } finally {
-                setLoading(false);
-            }
-
-            // Continue with existing GST number logic
-            setFormData(prev => {
-                const newFormData = {
-                    ...prev,
-                    [name]: processedValue
-                };
-
-                if (processedValue.length >= 2) {
-                    const isHomeState = processedValue.startsWith('24');
-                }
-                return newFormData;
-            });
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                [name]: processedValue
-            }));
-        }
-    };
-
-    const validateGST = (field: string, value: string) => {
-        const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-        if (!value) return `${field} is required`;
-        if (!gstPattern.test(value)) return 'Invalid GST Number format';
-        return undefined;
-    };
-
-    const validateMobile = (field: string, value: string) => {
-        const mobilePattern = /^[6-9]\d{9}$/;
-        if (!value) return `${field} is required`;
-        if (!mobilePattern.test(value)) return 'Invalid Mobile Number';
-        return undefined;
+        setFormData(initialSearch);
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -443,106 +507,33 @@ const Bill = () => {
         if (loading) return;
         try {
             setLoading(true);
-            const formDataToSend = new FormData();
-            if (formData.aadharPhoto instanceof File) {
-                formDataToSend.append('aadharPhoto', formData.aadharPhoto);
-            }
-            if (formData.panCardPhoto instanceof File) {
-                formDataToSend.append('panCardPhoto', formData.panCardPhoto);
-            }
-            if (formData.billPhoto instanceof File) {
-                formDataToSend.append('billPhoto', formData.billPhoto);
-            }
-            const cleanData = {
-                ...formData,
-                aadharPhoto: undefined,
-                panCardPhoto: undefined,
-                billPhoto: undefined
-            };
 
-            Object.keys(formData).forEach(key => {
-                const value = formData[key as keyof IBill];
-                console.log(key);
-                if (key === 'prizefix' || key === 'sites') {
-                    console.log(formData[key]);
+            await billService.getAllBill();
+            // await billService.getAllBill(formData);
+            toast.success('Purchase added successfully');
 
-                    const value = formData[key];
-                    if (Array.isArray(value)) {
-                        formDataToSend.append(key, JSON.stringify(value));
-                    }
-                } else {
-                    formDataToSend.append(key, String(value));
-                }
-            });
-
-            if (isEditMode && formData._id) {
-                await billService.updateBill(formData._id, formDataToSend);
-                toast.success('Bill updated successfully');
-            } else {
-                await billService.addBill(formDataToSend);
-                toast.success('Bill added successfully');
-            }
             handleClose();
             setShouldFetch(true);
         } catch (error: any) {
-            toast.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} bill`);
+            toast.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} purchase`);
         } finally {
             setLoading(false);
         }
     };
-
-    const handleDeleteClick = (id: string) => {
-        setBillToDelete(id);
-        setDeleteDialogOpen(true);
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (!billToDelete) return;
-
-        try {
-            await billService.deleteBill(billToDelete);
-            toast.success('Bill deleted successfully');
-
-            // Update purchases with recalculated numbers
-            setBill(prevData => {
-                const filteredData = prevData.filter((item: IBill) => item._id !== billToDelete);
-                return filteredData.map((purchase: IBill, index: number) => ({
-                    ...purchase,
-                    no: index + 1
-                }));
-            });
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to delete bill');
-        } finally {
-            setDeleteDialogOpen(false);
-            setBillToDelete(null);
-        }
-    };
-
-    const handleEditClick = (purchase: any) => {
-        setFormData({
-            ...purchase,
-            date: new Date(purchase.date).toISOString().split('T')[0]
-        });
-        setIsEditMode(true);
-        setOpen(true);
-    };
-
     const CustomToolbar = () => {
         const handleExport = (type: string) => {
             if (type === 'pdf') {
-                const visibleColumns = columns.filter(col => {
-                    return columnVisibility[col.field] !== false && col.field !== 'actions';
-                });
-                downloadPDF(visibleColumns);
+                // const visibleColumns = columns.filter(col => {
+                //     return columnVisibility[col.field] !== false && col.field !== 'actions';
+                // });
+                // downloadPDF(visibleColumns);
             }
         };
 
         return (
             <GridToolbarContainer sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
-                    <GridToolbarColumnsButton />
-                    <GridToolbarFilterButton />
+
                     <Button
                         onClick={() => handleExport('pdf')}
                         startIcon={<FileDownloadIcon />}
@@ -715,357 +706,13 @@ const Bill = () => {
         doc.save('purchases-list.pdf');
     };
 
-    // Recalculate totals with new GST rates
-    //     setFormData(prev => {
-    //         const subTotal = prev.products.reduce((sum, product) => sum + (product.amount || 0), 0);
-    //         const transportCost = Number(prev.transportAndCasting) || 0;
-    //         const baseAmount = subTotal + transportCost;
-
-    //         const newSgst = (baseAmount * (type === 'sgstRate' ? value : gstRates.sgstRate) / 100);
-    //         const newCgst = (baseAmount * (type === 'cgstRate' ? value : gstRates.cgstRate) / 100);
-    //         const newIgst = (baseAmount * (type === 'igstRate' ? value : gstRates.igstRate) / 100);
-
-    //         return {
-    //             ...prev,
-    //             sgst: newSgst,
-    //             cgst: newCgst,
-    //             igst: newIgst,
-    //             totalAmount: baseAmount + (prev.GSTnumber.startsWith('24') ? (newSgst + newCgst) : newIgst)
-    //         };
-    //     });
-    // };
-
-    // const handleGSTRateOptionChange = (value: string) => {
-    //     setSelectedGSTRate(value);
-    //     if (value === 'custom') {
-    //         setIsCustomGstRates(true);
-    //         // Keep existing rates when switching to custom
-    //         return;
-    //     }
-
-    //     setIsCustomGstRates(false);
-    //     const numericValue = Number(value);
-    //     const isHomeState = formData.GSTnumber.startsWith('24');
-
-    //     setGstRates({
-    //         sgstRate: isHomeState ? numericValue / 2 : 0,
-    //         cgstRate: isHomeState ? numericValue / 2 : 0,
-    //         igstRate: isHomeState ? 0 : numericValue
-    //     });
-
-    //     // Recalculate totals with new GST rates
-    //     setFormData(prev => {
-    //         const subTotal = prev.products.reduce((sum, product) => sum + (product.amount || 0), 0);
-    //         const transportCost = Number(prev.transportAndCasting) || 0;
-    //         const baseAmount = subTotal + transportCost;
-
-    //         const newSgst = isHomeState ? (baseAmount * (numericValue / 2) / 100) : 0;
-    //         const newCgst = isHomeState ? (baseAmount * (numericValue / 2) / 100) : 0;
-    //         const newIgst = isHomeState ? 0 : (baseAmount * numericValue / 100);
-
-    //         return {
-    //             ...prev,
-    //             amount: baseAmount,
-    //             sgst: newSgst,
-    //             cgst: newCgst,
-    //             igst: newIgst,
-    //             totalAmount: baseAmount + (isHomeState ? (newSgst + newCgst) : newIgst)
-    //         };
-    //     });
-    // };
-
-    // Fetch products on component mount
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const response = await productService.getAllProducts();
-                // Group products by name with their available sizes
-                const groupedProducts = response.data.products.reduce((acc: any[], product: any) => {
-                    const existing = acc.find(p => p.name === product.productName);
-                    if (existing) {
-                        if (!existing.sizes.includes(product.size)) {
-                            existing.sizes.push(product.size);
-                        }
-                    } else {
-                        acc.push({ name: product.productName, sizes: [product.size] });
-                    }
-                    return acc;
-                }, []);
-                setProductOptions(groupedProducts);
-            } catch (error) {
-                toast.error('Failed to fetch products');
-            }
-        };
-        fetchProducts();
-    }, []);
-
-    // Add custom product selection dialog
-    const DetailPanelDialog = () => {
-        const selectedBill = bill.find(p => p._id == selectedProductIndex?.toString());
-
-        if (!selectedBill) return null;
-
-        return (
-            <Dialog
-                open={productPopupOpen}
-                onClose={() => setProductPopupOpen(false)}
-                maxWidth="md"
-                fullWidth
-            >
-                <DialogTitle>Bill Details</DialogTitle>
-                <DialogContent>
-                    <Box sx={{ mb: 3 }}>
-
-                        <Grid container spacing={2}>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">GST Number:</Typography>
-                                <Typography>{selectedBill.GSTnumber}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Bill Name:</Typography>
-                                <Typography>{selectedBill.billName}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Mobile Number:</Typography>
-                                <Typography>{selectedBill.mobileNumber}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Rcedent Address:</Typography>
-                                <Typography>{selectedBill.residentAddress}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Pan Card Number:</Typography>
-                                <Typography>{selectedBill.pancardNo}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Aadhar Card Number:</Typography>
-                                <Typography>{selectedBill.aadharNo}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Partner Name:</Typography>
-                                <Typography>{selectedBill.partnerName}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Partner Number:</Typography>
-                                <Typography>{selectedBill.partnerMobileNumber}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Reference :</Typography>
-                                <Typography>{selectedBill.reference}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Reference Number:</Typography>
-                                <Typography>{selectedBill.referenceMobileNumber}</Typography>
-                            </Grid>
-                        </Grid>
-                    </Box>
-
-                    {/* Products Table */}
-                    <Typography variant="subtitle1" gutterBottom>Products</Typography>
-                    <TableContainer component={Paper} variant="outlined">
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Product Name</TableCell>
-                                    <TableCell>Size</TableCell>
-                                    <TableCell align="right">Rate</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {selectedBill.prizefix?.map((product: any, index: any) => (
-                                    <TableRow key={index}>
-                                        <TableCell>{product.productName}</TableCell>
-                                        <TableCell>{product.size}</TableCell>
-                                        <TableCell align="right">₹{product.rate?.toFixed(2)}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-
-                    {/* Sites Section */}
-                    <Box sx={{ mt: 3 }}>
-                        <Typography variant="subtitle1" gutterBottom>Sites</Typography>
-                        <TableContainer component={Paper} variant="outlined">
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Site Name</TableCell>
-                                        <TableCell>Site Address</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {selectedBill?.sites?.map((site: any, index: any) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{site.siteName}</TableCell>
-                                            <TableCell>{site.siteAddress}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
-                    {/* images */}
-                    <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" gutterBottom>Documents & Photos</Typography>
-                        {selectedBill.aadharPhoto && (
-                            <Grid item xs={12} md={4}>
-                                <Typography variant="body2" color="textSecondary">Aadhar Card:</Typography>
-                                <Box
-                                    component="img"
-                                    src={typeof selectedBill.aadharPhoto === 'string' ? selectedBill.aadharPhoto : ''}
-                                    alt="Bill Photo"
-                                    sx={{
-                                        width: '100%',
-                                        height: 200,
-                                        objectFit: 'cover',
-                                        borderRadius: 1
-                                    }}
-                                />
-                            </Grid>
-                        )}
-                        {selectedBill.panCardPhoto && (
-                            <Grid item xs={12} md={4}>
-                                <Typography variant="body2" color="textSecondary">Pan Card Card:</Typography>
-                                <Box
-                                    component="img"
-                                    src={typeof selectedBill.panCardPhoto === 'string' ? selectedBill.panCardPhoto : ''}
-                                    alt="Pancard Photo"
-                                    sx={{
-                                        width: '100%',
-                                        height: 200,
-                                        objectFit: 'cover',
-                                        borderRadius: 1
-                                    }}
-                                />
-                            </Grid>
-                        )}
-                        {selectedBill.billPhoto && (
-                            <Grid item xs={12} md={4}>
-                                <Typography variant="body2" color="textSecondary">Bill Card:</Typography>
-                                <Box
-                                    component="img"
-                                    src={typeof selectedBill.billPhoto === 'string' ? selectedBill.billPhoto : ''}
-                                    alt="Bill Photo"
-                                    sx={{
-                                        width: '100%',
-                                        height: 200,
-                                        objectFit: 'cover',
-                                        borderRadius: 1
-                                    }}
-                                />
-                            </Grid>
-                        )}
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button color='error' onClick={() => setProductPopupOpen(false)}>Close</Button>
-                </DialogActions>
-            </Dialog>
-        );
-    };
-
-    // Modify the product input section in the form
-    const productInput = (index: number, product: Iprizefix) => (
-        <Box sx={{
-            display: 'flex',
-            gap: 2,
-            alignItems: 'center',
-            flexDirection: { xs: 'column', md: 'row' },
-            width: '100%',
-            mb: 2
-        }}>
-            <Box flex={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
-                <StyledSelect
-                    fullWidth
-                    value={product.productName || ''}
-                    onChange={(e: SelectChangeEvent<unknown>) => {
-                        handleProductChange(index, 'productName', e.target.value);
-                        handleProductChange(index, 'size', '');
-                    }}
-                    displayEmpty
-                    renderValue={(value) => (value as string) || 'Select Product'}
-                    sx={{ minWidth: { xs: '100%', md: 200 } }}
-                >
-                    <MenuItem disabled value="">
-                        <em>Select Product</em>
-                    </MenuItem>
-                    {productOptions.map((option) => (
-                        <MenuItem
-                            key={option.name}
-                            value={option.name}
-                            sx={{
-                                '&:hover': {
-                                    backgroundColor: '#7b4eff',
-                                }
-                            }}
-                        >
-                            {option.name}
-                        </MenuItem>
-                    ))}
-                </StyledSelect>
-            </Box>
-            <Box flex={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
-                <StyledSelect
-                    fullWidth
-                    value={product.size || ''}
-                    onChange={(e) => handleProductChange(index, 'size', e.target.value)}
-                    disabled={!product.productName}
-                    displayEmpty
-                    renderValue={(value: unknown) => (value as string) || 'Select Size'}
-                    sx={{ minWidth: { xs: '100%', md: 150 } }}
-                >
-                    <MenuItem disabled value="">
-                        <em>Select Size</em>
-                    </MenuItem>
-                    {productOptions
-                        .find(p => p.name === product.productName)
-                        ?.sizes.map((size) => (
-                            <MenuItem
-                                key={size}
-                                value={size}
-                                sx={{
-                                    '&:hover': {
-                                        backgroundColor: 'primary.light',
-                                    }
-                                }}
-                            >
-                                {size}
-                            </MenuItem>
-                        ))}
-                </StyledSelect>
-            </Box>
-        </Box>
-    );
 
     // Add site handling functions
-    const addSite = () => {
-        setFormData(prev => ({
-            ...prev,
-            sites: Array.isArray(prev.sites) ? [...prev.sites, initialSite] : [initialSite]
-        }));
-    };
-
-    const removeSite = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            sites: Array.isArray(prev.sites)
-                ? prev.sites.filter((_, i) => i !== index)
-                : [initialSite]
-        }));
-    };
-
-    const handleSiteChange = (index: number, field: keyof ISite, value: string) => {
+    const handleSiteChange = (value: string) => {
         setFormData(prev => {
-            const currentSites = Array.isArray(prev.sites) ? prev.sites : [initialSite];
-            const newSites = [...currentSites];
-            newSites[index] = {
-                ...newSites[index],
-                [field]: value
-            };
             return {
                 ...prev,
-                sites: newSites
+                sites: value
             };
         });
     };
@@ -1102,432 +749,154 @@ const Bill = () => {
         ],
     };
 
-    // Add photo upload functionality
-    const handlePhotoUpload = async (field: 'aadharPhoto' | 'panCardPhoto' | 'billPhoto', file: File) => {
-        try {
-            console.log('Uploading file:', field, file); // Debug log
-            setFormData(prev => ({
-                ...prev,
-                [field]: file
-            }));
-            toast.success(`${field} selected successfully`);
-        } catch (error) {
-            console.error('Photo upload error:', error);
-            toast.error(`Failed to process ${field}`);
-        }
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
-    // Photo upload buttons with proper icons
-    const PhotoUploadButton = ({ field, icon, label }: {
-        field: 'aadharPhoto' | 'panCardPhoto' | 'billPhoto',
-        icon: React.ReactNode,
-        label: string
-    }) => (
-        <Box flex={1}>
-            <input
-                type="file"
-                accept="image/*"
-                id={`${field}-upload`}
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                        console.log('File selected:', field, file); // Debug log
-                        handlePhotoUpload(field, file);
-                    }
-                }}
-            />
-            <label htmlFor={`${field}-upload`}>
-                <Button
-                    component="span"
-                    startIcon={icon}
-                    sx={{
-                        mt: 2,
-                        bgcolor: '#7b4eff',
-                        color: 'white',
-                        '&:hover': {
-                            bgcolor: '#6a3dd9',
-                        }
-                    }}
-                >
-                    {label}
-                </Button>
-            </label>
-        </Box>
-    );
+    const handleSearchChange = (field: keyof ISearchOption, value: any) => {
+        setFormData(prev => {
+            return {
+                ...prev,
+                [field]: value
+            };
+        });
+    };
+
+
 
     return (
         <Box sx={{ p: 2 }}>
-            <Button
-                fullWidth
-                variant="contained"
-                sx={{ bgcolor: '#7b4eff', color: 'white', mb: 2 }}
-                onClick={() => {
-                    setIsEditMode(false);
-                    setFormData(initialFormData);
-                    setOpen(true);
-                }}
-            >
-                <PersonAddAltIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-                Add new Bill
-            </Button>
-
-            <Modal
-                open={open}
-                onClose={handleClose}
-                aria-labelledby="modal-title"
-            >
-                <Box sx={modalStyle}>
-                    <Typography id="modal-title" variant="h6" component="h2" sx={{ mb: 3 }}>
-                        {isEditMode ? 'Edit Purchase' : 'Add New Purchase'}
-                    </Typography>
-
-                    <Form onSubmit={handleSubmit}>
-                        <Stack spacing={2}>
-                            {/* First Row */}
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="GSTnumber"
-                                        label="GST Number"
-                                        value={formData.GSTnumber}
-                                        onChange={handleChange}
-                                        validate={validateGST}
-                                        required
-                                    />
-                                </Box>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="billName"
-                                        label="Bill Name"
-                                        value={formData.billName}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </Box>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="mobileNumber"
-                                        label="Mobile Number"
-                                        value={formData.mobileNumber}
-                                        onChange={handleChange}
-                                        validate={validateMobile}
-                                        type="tel"
-                                    />
-                                </Box>
-                            </Stack>
-
-                            {/* Second Row */}
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="partnerName"
-                                        label="Partner Name"
-                                        value={formData.partnerName}
-                                        onChange={handleChange}
-                                    />
-                                </Box>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="partnerMobileNumber"
-                                        label="Partner Mobile Number"
-                                        value={formData.partnerMobileNumber}
-                                        onChange={handleChange}
-                                        validate={validateMobile}
-                                        type="tel"
-                                    />
-                                </Box>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="residentAddress"
-                                        label="Resident Address"
-                                        value={formData.residentAddress}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </Box>
-                            </Stack>
-
-                            {/* Third Row */}
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="reference"
-                                        label="Reference"
-                                        value={formData.reference}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </Box>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="referenceMobileNumber"
-                                        label="Reference Mobile Number"
-                                        value={formData.referenceMobileNumber}
-                                        onChange={handleChange}
-                                        validate={validateMobile}
-                                        type="tel"
-                                    />
-                                </Box>
-                            </Stack>
-
-                            {/* 4 Row */}
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="aadharNo"
-                                        label="Aadhar No"
-                                        value={formData.aadharNo}
-                                        onChange={handleChange}
-                                    />
-                                </Box>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="pancardNo"
-                                        label="Pan Card No"
-                                        value={formData.pancardNo}
-                                        onChange={handleChange}
-                                    />
-                                </Box>
-                            </Stack>
-
-                            {/* 5 Row */}
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <PhotoUploadButton
-                                    field="aadharPhoto"
-                                    icon={<CreditCardIcon />}
-                                    label="Aadhar Photo"
-                                />
-                                <PhotoUploadButton
-                                    field="panCardPhoto"
-                                    icon={<CreditCardIcon />}
-                                    label="Pan Card Photo"
-                                />
-                                <PhotoUploadButton
-                                    field="billPhoto"
-                                    icon={<PersonIcon />}
-                                    label="Bill Photo"
-                                />
-                            </Stack>
-
-                            {/* Products Section */}
-                            <Paper sx={{ p: 3, mt: 3 }}>
-                                <Typography variant="h6" sx={{ mb: 3, color: 'primary.main' }}>
-                                    Products
-                                </Typography>
-                                <Stack spacing={2}>
-                                    {formData.prizefix?.map((product : any, index: any) => (
-                                        <Paper
-                                            key={index}
-                                            elevation={0}
-                                            sx={{
-                                                p: 2,
-                                                border: '1px solid',
-                                                borderColor: 'divider',
-                                                borderRadius: 1,
-                                                '&:hover': {
-                                                    boxShadow: 1
-                                                }
-                                            }}
-                                        >
-                                            <Stack
-                                                direction={{ xs: 'column', md: 'row' }}
-                                                spacing={2}
-                                                alignItems="center"
-                                                position="relative"
-                                            >
-                                                <Box flex={2}>
-                                                    {productInput(index, product)}
-                                                </Box>
-                                                <Box flex={1}>
-                                                    <FormInput
-                                                        name={`products.${index}.rate`}
-                                                        label="Rate"
-                                                        type="number"
-                                                        value={product.rate?.toString()}
-                                                        onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
-                                                        required
-                                                    />
-                                                </Box>
-                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-                                                    <IconButton
-                                                        onClick={() => removeProduct(index)}
-                                                        color="error"
-                                                        size="small"
-                                                        sx={{
-                                                            '&:hover': {
-                                                                backgroundColor: 'error.lighter'
-                                                            }
-                                                        }}
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Box>
-                                            </Stack>
-                                        </Paper>
-                                    ))}
-                                </Stack>
-                                <Button
-                                    onClick={addProduct}
-                                    startIcon={<AddIcon />}
-                                    variant="outlined"
-                                    sx={{ mt: 2 }}
+            <Form onSubmit={handleSubmit}>
+                <Box sx={{
+                    display: 'flex',
+                    gap: 2,
+                    alignItems: 'center',
+                    flexDirection: { xs: 'column', md: 'row' },
+                    width: '100%',
+                    mb: 2
+                }}>
+                    <Box flex={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
+                        <StyledSelect
+                            fullWidth
+                            value={formData.customerName || ''}
+                            onChange={(e: SelectChangeEvent<unknown>) => {
+                                handleSearchChange('customerName', e.target.value);
+                            }}
+                            displayEmpty
+                            renderValue={(value) => (value as string) || 'Select Customer'}
+                            sx={{ minWidth: { xs: '100%', md: 200 } }}
+                        >
+                            <MenuItem disabled value="">
+                                <em>Select Customer</em>
+                            </MenuItem>
+                            {productOptions.map((option) => (
+                                <MenuItem
+                                    key={option.customerName}
+                                    value={option.customerName}
+                                    sx={{
+                                        '&:hover': {
+                                            backgroundColor: 'var(----primary-color)',
+                                        }
+                                    }}
                                 >
-                                    Add Product
-                                </Button>
-                            </Paper>
-
-                            {/* Sites Section */}
-                            <Paper sx={{ p: 3, mt: 3 }}>
-                                <Typography variant="h6" sx={{ mb: 3, color: 'primary.main' }}>
-                                    Sites
-                                </Typography>
-                                <Stack spacing={2}>
-                                    {formData.sites?.map((site : any, index: any) => (
-                                        <Paper
-                                            key={index}
-                                            elevation={0}
-                                            sx={{
-                                                p: 2,
-                                                border: '1px solid',
-                                                borderColor: 'divider',
-                                                borderRadius: 1,
-                                                '&:hover': {
-                                                    boxShadow: 1
-                                                }
-                                            }}
-                                        >
-                                            <Stack
-                                                direction={{ xs: 'column', md: 'row' }}
-                                                spacing={2}
-                                                alignItems="center"
-                                                position="relative"
-                                            >
-                                                <Box flex={1}>
-                                                    <FormInput
-                                                        name={`sites.${index}.siteName`}
-                                                        label="Site Name"
-                                                        value={site.siteName}
-                                                        onChange={(e) => handleSiteChange(index, 'siteName', e.target.value)}
-                                                        required
-                                                    />
-                                                </Box>
-                                                <Box flex={2}>
-                                                    <FormInput
-                                                        name={`sites.${index}.siteAddress`}
-                                                        label="Site Address"
-                                                        value={site.siteAddress}
-                                                        onChange={(e) => handleSiteChange(index, 'siteAddress', e.target.value)}
-                                                        required
-                                                    />
-                                                </Box>
-                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-                                                    <IconButton
-                                                        onClick={() => removeSite(index)}
-                                                        color="error"
-                                                        size="small"
-                                                        sx={{
-                                                            '&:hover': {
-                                                                backgroundColor: 'error.lighter'
-                                                            }
-                                                        }}
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Box>
-                                            </Stack>
-                                        </Paper>
-                                    ))}
-                                </Stack>
-                                <Button
-                                    onClick={addSite}
-                                    startIcon={<AddIcon />}
-                                    variant="outlined"
-                                    sx={{ mt: 2 }}
-                                >
-                                    Add Site
-                                </Button>
-                            </Paper>
-
-                            {/* Action Buttons */}
-                            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
-                                <Button onClick={handleClose} variant="contained" color="error">
-                                    Cancel
-                                </Button>
-                                <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
-                                    {isEditMode ? 'Update Purchase' : 'Save Purchase'}
-                                </Button>
-                            </Stack>
-                        </Stack>
-                    </Form>
+                                    {option.customerName}
+                                </MenuItem>
+                            ))}
+                        </StyledSelect>
+                    </Box>
+                    <Box flex={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
+                        <StyledSelect
+                            fullWidth
+                            value={formData.site || ''}
+                            onChange={(e) => handleSearchChange('site', e.target.value)}
+                            disabled={!formData.customerName}
+                            displayEmpty
+                            renderValue={(value: unknown) => (value as string) || 'Select Site'}
+                            sx={{ minWidth: { xs: '100%', md: 150 } }}
+                        >
+                            <MenuItem disabled value="">
+                                <em>Select Site</em>
+                            </MenuItem>
+                            {productOptions
+                                .find(p => p.customerName === formData.customerName)
+                                ?.sites.map((site) => (
+                                    <MenuItem
+                                        key={site}
+                                        value={site}
+                                        sx={{
+                                            '&:hover': {
+                                                backgroundColor: 'primary.light',
+                                            }
+                                        }}
+                                    >
+                                        {site}
+                                    </MenuItem>
+                                ))}
+                        </StyledSelect>
+                    </Box>
                 </Box>
-            </Modal>
-
-            <Dialog
-                open={deleteDialogOpen}
-                onClose={() => setDeleteDialogOpen(false)}
-            >
-                <DialogTitle>Confirm Delete</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        Are you sure you want to delete this bill? This action cannot be undone.
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button
-                        onClick={() => setDeleteDialogOpen(false)}
-                        variant="outlined"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleDeleteConfirm}
-                        variant="contained"
-                        color="error"
-                        autoFocus
-                    >
-                        Delete
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            <DetailPanelDialog />
-
-            <Paper sx={{ height: 600, width: '100%' }}>
-                <DataGrid
-                    ref={gridRef}
-                    rows={bill}
-                    columns={columns}
-                    loading={loading}
-                    disableRowSelectionOnClick
-                    getRowId={(row: any) => row._id}
+                <FormInput
+                    name="startingDate"
+                    label="Starting Date"
+                    type="date"
+                    value={formData.startingDate?.toISOString()}
+                    onChange={handleChange}
+                    required
                     sx={{
-                        border: 0,
-                        '& .MuiDataGrid-columnHeaders': {
-                            backgroundColor: '#f5f5f5',
+                        '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                            cursor: 'pointer',
+                            padding: '8px',
+                            filter: 'invert(0.5)',
+                            '&:hover': {
+                                opacity: 0.7
+                            }
                         },
-                        '& .MuiDataGrid-cell:focus': {
-                            outline: 'none',
-                        },
+                        '& input[type="date"]': {
+                            colorScheme: 'light'
+                        }
                     }}
-                    slots={{
-                        toolbar: CustomToolbar,
-                        loadingOverlay: () => (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                                <CircularProgress color="primary" />
-                            </Box>
-                        ),
-                    }}
-                    filterModel={gridFilterModel}
-                    onFilterModelChange={(model) => setGridFilterModel(model)}
-                    onColumnVisibilityModelChange={(newModel) => {
-                        setColumnVisibility(newModel);
-                    }}
-                    disableColumnFilter={false}
-                    disableDensitySelector={true}
-                    disableColumnSelector={false}
                 />
-            </Paper>
+                <FormInput
+                    name="endingDate"
+                    label="Ending Date"
+                    type="date"
+                    value={formData.endingDate?.toISOString()}
+                    onChange={handleChange}
+                    required
+                    sx={{
+                        '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                            cursor: 'pointer',
+                            padding: '8px',
+                            filter: 'invert(0.5)',
+                            '&:hover': {
+                                opacity: 0.7
+                            }
+                        },
+                        '& input[type="date"]': {
+                            colorScheme: 'light'
+                        }
+                    }}
+                />
+                <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
+                    {isEditMode ? 'Update Purchase' : 'Save Purchase'}
+                </Button>
+            </Form>
+
+            {(
+                // Loop over each month and display a DataGrid for each one
+                bill.map((billMonth, idx) => (
+                    <Paper sx={{ height: 600, width: '100%', marginBottom: 2 }} key={idx}>
+                        <CommonDataTable
+                        loading=
+                        />
+                    </Paper>
+                ))
+            )}
+
         </Box>
     );
 };

@@ -7,7 +7,6 @@ import Dashboard from '../pages/dashboard/dashboard.page.tsx';
 import { Route } from 'react-router-dom';
 
 const AppRoutes = [
-  <Route key="dashboard" path="/dashboard" element={<Dashboard />} />,
   ...authRoutes,
   ...gstRoutes,
   ...commonRoutes,

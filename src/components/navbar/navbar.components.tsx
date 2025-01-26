@@ -62,14 +62,13 @@ const Navbar: React.FC<Props> = (props) => {
 
   const gstMenuItems = [
     { key: 'home', text: 'Home', icon: HomeIcon, path: '/dashboard'},
-    { key: 'stocks&reports', text: 'Stocks & Reports', icon: AutoStoriesIcon, path: '/stocks' },
+    { key: 'stocks', text: 'Stocks', icon: AutoStoriesIcon, path: '/stocks' },
     { key: 'add-sale', text: 'Add Sale', icon: PointOfSaleIcon, path: '/sales/new' },
     { key: 'add-purchase', text: 'Add Purchase', icon: DashboardCustomizeIcon, path: '/purchasesGST/new' },
     { key: 'add-new-customer', text: 'Add New Customer', icon: EmojiSymbolsIcon, path: '/customersGST/new' },
   ];
 
   const nonGstMenuItems = [
-    { key: 'stocks&price', text: 'Stocks & Price', icon: ReceiptIcon, path: '/stocks' },
     { key: 'challan', text: 'Challan', icon: StoreIcon, path: '/challan' },
     { key: 'payment', text: 'Payment', icon: CurrencyRupeeIcon, path: '/payment' },
     { key: 'direct-bill', text: 'Direct Bill', icon: CurrencyBitcoinIcon, path: '/bill/new' },
