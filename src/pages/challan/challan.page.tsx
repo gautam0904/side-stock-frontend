@@ -77,8 +77,8 @@ interface IChallan {
   loading: number;
   unloading: number;
   transportCharge: number;
-  serviceCharge: Number;
-  damageCharge: Number;
+  serviceCharge?: number;
+  damageCharge?: number;
   amount: number;
   totalAmount: number;
 }
@@ -219,6 +219,8 @@ const Challan = () => {
     { field: 'mobileNumber', headerName: 'Mobile Number', width: 150 },
     { field: 'siteName', headerName: 'Site Name', width: 130 },
     { field: 'siteAddress', headerName: 'Site Address', width: 130 },
+    { field: 'serviceCharge', headerName: 'Service Charge', width: 130 },
+    { field: 'damageCharge', headerName: 'Damage Charge', width: 130 },
     {
       field: 'amount',
       headerName: 'Amount',
@@ -278,18 +280,18 @@ const Challan = () => {
 
       // Calculate totals
       const subTotal = newProducts.reduce((sum, product) => sum + (Number(product.amount) || 0), 0);
-      const transportCost = Number(prev.transportCharge || 0);
       const transportCharge = Number(prev.loading) + Number(prev.unloading);
+      const serviceCharge = Number(prev.serviceCharge)
+      const damageCharge = Number(prev.damageCharge)
       const baseAmount = subTotal
-
-
-
       return {
         ...prev,
         products: newProducts,
         amount: baseAmount,
         transportCharge,
-        totalAmount: Number(baseAmount) + Number(transportCharge)
+        serviceCharge,
+        damageCharge,
+        totalAmount: Number(baseAmount) + Number(transportCharge) +serviceCharge + damageCharge
       };
     });
   };
@@ -299,14 +301,27 @@ const Challan = () => {
       ...prev,
       products: [...(prev.products || []), {
         productName: '',
-        date: new Date(),
+        date: formData.date,
         quantity: 0,
         size: '',
         rate: 0,
         amount: 0
       }]
     }));
+    const nextProductIndex = formData.products.length;
+    if (productRefs.current[nextProductIndex]) {
+      productRefs.current[nextProductIndex]?.focus();
+    }
   };
+
+  useEffect(() => {
+    if (formData.products.length > 0) {
+      const newProductIndex = formData.products.length - 1;
+      if (productRefs.current[newProductIndex]) {
+        productRefs.current[newProductIndex]?.focus();
+      }
+    }
+  }, [formData.products.length]);
 
   const removeProduct = (index: number) => {
     setFormData(prev => ({
@@ -343,7 +358,6 @@ const Challan = () => {
     }
   }, [loading]);
 
-  // Simplify initial fetch effect
   useEffect(() => {
     if (shouldFetch) {
       fetchChallan();
@@ -361,11 +375,39 @@ const Challan = () => {
 
     const processedValue = value;
 
+    if (name == 'date') {
+      const newProduct = formData.products.map((p) => {
+        return {
+          ...p,
+          date: new Date(value),
+        }
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        products: newProduct
+      }))
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: processedValue
     }));
   }
+  const handleExtraCharge = (field: keyof IChallan, value: any) => {
+    setFormData((prev) => {
+      const updatedFormData: IChallan = { ...prev };
+  
+      (updatedFormData[field] as number) = value ?? 0;
+  
+      const prevAmount = Number(prev[field]) ?? 0; 
+      updatedFormData.totalAmount = (prev.totalAmount ?? 0) - prevAmount + Number(value);
+  
+      return updatedFormData;
+    });
+  };
+  
+  
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -817,10 +859,11 @@ const Challan = () => {
           }}
           displayEmpty
           renderValue={(value) => (value as string) || 'Select Product'}
+          inputRef={(ref) => (productRefs.current[index] = ref)}
           sx={{
-            height: '55px',  // Set height to match other fields
+            height: '55px',
             '& .MuiSelect-root': {
-              height: '55px',  // Ensure the root select element has the correct height
+              height: '55px',
             },
 
             '& .MuiOutlinedInput-root': {
@@ -911,9 +954,6 @@ const Challan = () => {
 
   );
 
-
-
-
   const siteInput = (site: ISite) => (
     <Box sx={{
       display: 'flex',
@@ -931,6 +971,7 @@ const Challan = () => {
           onChange={(e: SelectChangeEvent<unknown>) => {
             handleSiteChange(e.target.value);
           }}
+          onKeyDown={handleTabKeyPress}
           displayEmpty
           renderValue={(value) => (value as string) || 'Select Site'}
           sx={{
@@ -979,8 +1020,6 @@ const Challan = () => {
 
   );
 
-
-
   // Add this configuration object
   const filterOperators = {
     string: [
@@ -1023,8 +1062,6 @@ const Challan = () => {
         const response = await customerService.getCustomerByName(query);
         const data = await response.data.customers;
         setCustomers(data);
-        console.log(data);
-
       } catch (error) {
         console.error('Error fetching customers:', error);
       }
@@ -1087,12 +1124,17 @@ const Challan = () => {
     });
   };
 
-  const handleToggleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      type: event.target.checked ? 'Return' : 'Delivery'
-    });
+  const handleTabKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      // Open the dropdown programmatically when the Tab key is pressed
+      const select = e.target as HTMLSelectElement;
+      if (select) {
+        select.focus();
+      }
+    }
   };
+
+  const productRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -1169,12 +1211,13 @@ const Challan = () => {
                       },
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '4px',
-                        borderColor: '#7b4eff',
                         '&:hover .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#7b4eff',
+                          color: '#7b4eff'
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#7b4eff',
+                          color: '#7b4eff'
                         },
                       },
                     }}
@@ -1255,7 +1298,27 @@ const Challan = () => {
                     label="Site Address"
                     value={formData.siteAddress}
                     onChange={handleChange}
-                    required
+                  />
+                </Box>
+              </Stack>
+
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                <Box flex={1}>
+                  <FormInput
+                    name="serviceCharge"
+                    label="Service Charge"
+                    type="number"
+                    value={formData.serviceCharge}
+                    onChange={(e) => (handleExtraCharge('serviceCharge', e.target.value))}
+                  />
+                </Box>
+                <Box flex={1}>
+                  <FormInput
+                    name="damageCharge"
+                    label="Damage Charge"
+                    value={formData.damageCharge}
+                    onChange={(e) => (handleExtraCharge('damageCharge', e.target.value))}
+                    type='number'
                   />
                 </Box>
               </Stack>
@@ -1266,17 +1329,17 @@ const Challan = () => {
                   <FormInput
                     name="loading"
                     label="Loading"
-                    value={formData.loading.toString()}
-                    onChange={handleChange}
-                    type='number'
+                    value={formData.loading}
+                    onChange={(e) => (handleExtraCharge('loading', e.target.value))}
+                    type='Number'
                   />
                 </Box>
                 <Box flex={1}>
                   <FormInput
                     name="unloading"
                     label="Unloading"
-                    value={formData.unloading.toString()}
-                    onChange={handleChange}
+                    value={formData.unloading}
+                    onChange={(e) => (handleExtraCharge('unloading', e.target.value))}
                     type='number'
                   />
                 </Box>
@@ -1284,8 +1347,8 @@ const Challan = () => {
                   <FormInput
                     name="transportCharge"
                     label="Transport Charge"
-                    value={formData.transportCharge.toString()}
-                    onChange={handleChange}
+                    value={formData.transportCharge}
+                    onChange={(e) => (handleExtraCharge('transportCharge', e.target.value))}
                     type='number'
                   />
                 </Box>
@@ -1326,7 +1389,7 @@ const Challan = () => {
                             name={`products.${index}.quantity`}
                             label="Quantity"
                             type="number"
-                            value={product.quantity?.toString()}
+                            value={product.quantity}
                             onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
                             required
                           />
@@ -1336,7 +1399,7 @@ const Challan = () => {
                             name={`products.${index}.rate`}
                             label="Rate"
                             type="number"
-                            value={product.rate?.toString()}
+                            value={product.rate}
                             onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
                             required
                           />
@@ -1399,7 +1462,7 @@ const Challan = () => {
                   Cancel
                 </Button>
                 <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
-                  {isEditMode ? 'Update Purchase' : 'Save Purchase'}
+                  {isEditMode ? 'Update Challan' : 'Save Challan'}
                 </Button>
               </Stack>
             </Stack>

@@ -14,7 +14,7 @@ interface FormInputProps {
   required?: boolean;
   className?: string;
   containerClassName?: string;
-  value?: string | null;
+  value?: string | null | number | Date;
   onChange?: (e: React.ChangeEvent<HTMLInputElement> | any) => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
@@ -134,7 +134,7 @@ export const FormInput: React.FC<FormInputProps> = ({
           placeholder=" "
           required={required}
           className={`form-input ${className} ${error ? 'input-error' : ''}`}
-          value={value || ''}
+          value={value?.toLocaleString() || ''}
           onChange={handleChange}
           onBlur={handleBlur}
           onFocus={handleFocus}

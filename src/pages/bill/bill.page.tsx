@@ -24,7 +24,9 @@ import {
     TableHead,
     TableRow,
     TableContainer,
-    Grid
+    Grid,
+    TextField,
+    debounce
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridFilterModel, GridLogicOperator, GridFilterItem } from '@mui/x-data-grid';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
@@ -48,8 +50,9 @@ import PhotoIcon from '@mui/icons-material/Photo';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
 import { ICutomer, Iprizefix, ISite } from 'src/DTO/customer.dto';
-import CommonDataTable from '@components/dataTable/dataTable.component';
-import { customerService } from 'src/api/customer.service';
+import CommonDataTable from '../../components/dataTable/dataTable.component';
+import { customerService } from '../../api/customer.service';
+
 
 declare module 'jspdf' {
     interface jsPDF {
@@ -156,7 +159,7 @@ const Bill = () => {
     const [open, setOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [billToDelete, setBillToDelete] = useState<string | null>(null);
-    const [bill, setBill] = useState<IBill>([]);
+    const [bill, setBill] = useState<IBill>();
     const [formData, setFormData] = useState<ISearchOption>(initialSearch);
     const [isEditMode, setIsEditMode] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -170,307 +173,9 @@ const Bill = () => {
     });
     const gridRef = useRef<any>(null);
     const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
-    const [productOptions, setProductOptions] = useState<Array<{ customerName: string, sites: string[] }>>([]);
-    const [bill2, setBill2] = useState([
-        {
-            "year": 2024,
-            "month": 1,
-            "totalAmount": 15999.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15999.999994212963,
-                    "month": 1,
-                    "year": 2024,
-                    "previousRestBill": 15999.999994212963,
-                    "startingDate": "2024-01-01T00:00:00.000Z",
-                    "endingDate": "2024-01-30T18:30:00.000Z",
-                    "dayCount": 30.770833333333332
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 2,
-            "totalAmount": 14999.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 14999.999994212963,
-                    "month": 2,
-                    "year": 2024,
-                    "previousRestBill": 30999.999988425927,
-                    "startingDate": "2024-01-31T18:30:00.000Z",
-                    "endingDate": "2024-02-28T18:30:00.000Z",
-                    "dayCount": 29
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 3,
-            "totalAmount": 15999.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15999.999994212963,
-                    "month": 3,
-                    "year": 2024,
-                    "previousRestBill": 46999.99998263889,
-                    "startingDate": "2024-02-29T18:30:00.000Z",
-                    "endingDate": "2024-03-30T18:30:00.000Z",
-                    "dayCount": 31
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 4,
-            "totalAmount": 15499.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15499.999994212963,
-                    "month": 4,
-                    "year": 2024,
-                    "previousRestBill": 62499.999976851854,
-                    "startingDate": "2024-03-31T18:30:00.000Z",
-                    "endingDate": "2024-04-29T18:30:00.000Z",
-                    "dayCount": 30
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 5,
-            "totalAmount": 15999.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15999.999994212963,
-                    "month": 5,
-                    "year": 2024,
-                    "previousRestBill": 78499.99997106481,
-                    "startingDate": "2024-04-30T18:30:00.000Z",
-                    "endingDate": "2024-05-30T18:30:00.000Z",
-                    "dayCount": 31
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 6,
-            "totalAmount": 15499.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15499.999994212963,
-                    "month": 6,
-                    "year": 2024,
-                    "previousRestBill": 88999.99996527778,
-                    "startingDate": "2024-05-31T18:30:00.000Z",
-                    "endingDate": "2024-06-29T18:30:00.000Z",
-                    "dayCount": 30
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 7,
-            "totalAmount": 15999.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15999.999994212963,
-                    "month": 7,
-                    "year": 2024,
-                    "previousRestBill": 104999.99995949074,
-                    "startingDate": "2024-06-30T18:30:00.000Z",
-                    "endingDate": "2024-07-30T18:30:00.000Z",
-                    "dayCount": 31
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 8,
-            "totalAmount": 15999.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15999.999994212963,
-                    "month": 8,
-                    "year": 2024,
-                    "previousRestBill": 120999.99995370371,
-                    "startingDate": "2024-07-31T18:30:00.000Z",
-                    "endingDate": "2024-08-30T18:30:00.000Z",
-                    "dayCount": 31
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 9,
-            "totalAmount": 15499.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15499.999994212963,
-                    "month": 9,
-                    "year": 2024,
-                    "previousRestBill": 136499.99994791666,
-                    "startingDate": "2024-08-31T18:30:00.000Z",
-                    "endingDate": "2024-09-29T18:30:00.000Z",
-                    "dayCount": 30
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 10,
-            "totalAmount": 15999.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15999.999994212963,
-                    "month": 10,
-                    "year": 2024,
-                    "previousRestBill": 152499.99994212962,
-                    "startingDate": "2024-09-30T18:30:00.000Z",
-                    "endingDate": "2024-10-30T18:30:00.000Z",
-                    "dayCount": 31
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 11,
-            "totalAmount": 15499.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15499.999994212963,
-                    "month": 11,
-                    "year": 2024,
-                    "previousRestBill": 167999.9999363426,
-                    "startingDate": "2024-10-31T18:30:00.000Z",
-                    "endingDate": "2024-11-29T18:30:00.000Z",
-                    "dayCount": 30
-                }
-            ]
-        },
-        {
-            "year": 2024,
-            "month": 12,
-            "totalAmount": 15999.999994212963,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 15999.999994212963,
-                    "month": 12,
-                    "year": 2024,
-                    "previousRestBill": 183999.99993055555,
-                    "startingDate": "2024-11-30T18:30:00.000Z",
-                    "endingDate": "2024-12-30T18:30:00.000Z",
-                    "dayCount": 31
-                }
-            ]
-        },
-        {
-            "year": 2025,
-            "month": 1,
-            "totalAmount": 21507.796708333335,
-            "products": [
-                {
-                    "productName": "Product A",
-                    "quantity": 5,
-                    "rate": 100,
-                    "amount": 11948.775949074074,
-                    "month": 1,
-                    "year": 2025,
-                    "previousRestBill": 145948.77587962963,
-                    "startingDate": "2024-12-31T18:30:00.000Z",
-                    "endingDate": "2025-01-23T16:02:28.484Z",
-                    "dayCount": 23.897551898148148
-                },
-                {
-                    "productName": "Product B",
-                    "quantity": 2,
-                    "rate": 200,
-                    "amount": 9559.02075925926,
-                    "month": 1,
-                    "year": 2025,
-                    "previousRestBill": 155507.7966388889,
-                    "startingDate": "2025-01-01T00:00:00.000Z",
-                    "endingDate": "2025-01-23T16:02:28.484Z",
-                    "dayCount": 23.66838523148148
-                }
-            ]
-        }
-    ]);
-    const [customer, setCustomer] = useState<ICutomer>({})
-
-    const fetchBills = useCallback(async () => {
-        debugger
-        if (fetchInProgress.current || loading) return;
-
-        try {
-            fetchInProgress.current = true;
-            setLoading(true);
-
-            const response = await billService.getAllBill({
-                sortBy: 'createdAt',
-                sortOrder: 'desc'
-            });
-
-            const newBills = response.data?.items || [];
-            const billsWithNumbers = newBills.map((purchase: any, index: number) => ({
-                ...purchase,
-                id: purchase._id,
-                no: index + 1
-            }));
-
-            setBill(billsWithNumbers);
-            setShouldFetch(false);
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to fetch purchases');
-        } finally {
-            setLoading(false);
-            fetchInProgress.current = false;
-        }
-    }, [loading]);
-
-    // Simplify initial fetch effect
-    useEffect(() => {
-        if (shouldFetch) {
-            fetchBills();
-        }
-    }, [shouldFetch, fetchBills]);
-
+    const [productOptions, setProductOptions] = useState<Array<any>>([]);
+    const [customers, setCustomers] = useState<ICutomer[]>([])
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         const fetchCustomer = async () => {
@@ -507,11 +212,19 @@ const Bill = () => {
         if (loading) return;
         try {
             setLoading(true);
+            console.log(formData, "sub,itse");
 
-            await billService.getAllBill();
-            // await billService.getAllBill(formData);
-            toast.success('Purchase added successfully');
+            const response = await billService.getAllBill({
+                customerName: formData.customerName,
+                siteName: formData.site,
+                givenStartDate: formData.startingDate,
+                givenEndDate: formData.endingDate
+            });
 
+            // Make sure to use the correct path to access bill data
+            const newBills = response.data?.bill || [];
+
+            setBill(newBills);
             handleClose();
             setShouldFetch(true);
         } catch (error: any) {
@@ -574,7 +287,7 @@ const Bill = () => {
         const headers = visibleColumns.map(col => col.headerName);
         const keys = visibleColumns.map(col => col.field);
 
-        const tableData = bill.map((purchase: any) =>
+        const tableData = bill?.map((purchase: any) =>
             keys.map(key => {
                 switch (key) {
                     case 'amount':
@@ -598,7 +311,7 @@ const Bill = () => {
 
         keys.forEach((key) => {
             if (numericFields.includes(key)) {
-                totals[key] = bill.reduce((sum, purchase) => sum + (purchase[key] || 0), 0);
+                totals[key] = bill?.reduce((sum: number, purchase: any) => sum + (purchase[key] || 0), 0);
             }
         });
 
@@ -651,7 +364,7 @@ const Bill = () => {
             const pageTotals: { [key: string]: number } = {};
             keys.forEach((key) => {
                 if (numericFields.includes(key)) {
-                    pageTotals[key] = pageData.reduce((sum, row) => {
+                    pageTotals[key] = pageData.reduce((sum: any, row: any) => {
                         // Extract numeric value from the cell content
                         const value = typeof row[keys.indexOf(key)] === 'object'
                             ? Number(row[keys.indexOf(key)].content)
@@ -708,7 +421,7 @@ const Bill = () => {
 
 
     // Add site handling functions
-    const handleSiteChange = (value: string) => {
+    const handleSiteChange = (value: any) => {
         setFormData(prev => {
             return {
                 ...prev,
@@ -757,6 +470,7 @@ const Bill = () => {
         }));
     };
 
+
     const handleSearchChange = (field: keyof ISearchOption, value: any) => {
         setFormData(prev => {
             return {
@@ -766,7 +480,78 @@ const Bill = () => {
         });
     };
 
+    const fetchCustomers = debounce(async (query) => {
+        if (query) {
+            try {
+                const response = await customerService.getCustomerByName(query);
+                let data = await response.data.customers;
+                data = data.map((c: ICutomer) => {
+                    return {
+                        ...c,
+                        customerName: c.customerName?.replace(/['"]/g, "").trim()
+                    }
+                })
+                setCustomers(data);
 
+            } catch (error) {
+                console.error('Error fetching customers:', error);
+            }
+        } else {
+            setCustomers([]);
+        }
+    }, 500);
+
+    const handleCustomerSearchChange = (e: any) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+        fetchCustomers(query);
+    };
+
+
+    // Handle customer selection
+    const handleCustomerSelect = (customer: ICutomer) => {
+        debugger
+        setSearchQuery(customer.customerName as string);
+        setCustomers([]);
+
+        setProductOptions(customer.sites || []);
+
+        setProductOptions((prev) => {
+            const groupedProducts = customer.prizefix?.reduce((acc: any[], product: Iprizefix) => {
+                const existing = acc.find(p => p.name === product.productName);
+                if (existing) {
+                    if (!existing.sizes.includes(product.size)) {
+                        existing.sizes.push(product.size);
+                        existing.rate = product.rate
+                    }
+                } else {
+                    acc.push({ name: product.productName, sizes: [product.size] });
+                }
+                return acc;
+            }, []) || []; // Use empty array as fallback if groupedProducts is undefined
+
+            return [
+                ...prev,
+                ...groupedProducts
+            ];
+        });
+
+        setFormData((prev) => {
+
+            const updatedForm = {
+                ...prev,
+                customerName: customer.customerName as string,
+                customerId: customer._id || '',
+                mobileNumber: customer.mobileNumber as string,
+            };
+
+            if (customer.sites?.length || 0 < 1) {
+                updatedForm.site = customer?.sites?.[0].siteName || '';
+            }
+
+            return updatedForm;
+        });
+    };
 
     return (
         <Box sx={{ p: 2 }}>
@@ -779,40 +564,82 @@ const Bill = () => {
                     width: '100%',
                     mb: 2
                 }}>
-                    <Box flex={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
-                        <StyledSelect
+                    <Box flex={1} sx={{
+                        position: 'relative',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        width: '100%',
+                        margin: 'auto',
+                        '& .MuiBox-root': {
+                            margin: 'auto'
+                        },
+                    }}>
+                        <TextField
+                            label="Customer Name"
+                            value={searchQuery}
+                            className="customer-name-input"
+                            onChange={handleCustomerSearchChange}
                             fullWidth
-                            value={formData.customerName || ''}
-                            onChange={(e: SelectChangeEvent<unknown>) => {
-                                handleSearchChange('customerName', e.target.value);
+                            required
+                            autoComplete="on"
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                height: '55px',
+                                '& .MuiInputBase-root': {
+                                    height: '55px',
+                                },
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '4px',
+                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: '#7b4eff',
+                                        color: '#7b4eff'
+                                    },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: '#7b4eff',
+                                        color: '#7b4eff'
+                                    },
+                                },
                             }}
-                            displayEmpty
-                            renderValue={(value) => (value as string) || 'Select Customer'}
-                            sx={{ minWidth: { xs: '100%', md: 200 } }}
-                        >
-                            <MenuItem disabled value="">
-                                <em>Select Customer</em>
-                            </MenuItem>
-                            {productOptions.map((option) => (
-                                <MenuItem
-                                    key={option.customerName}
-                                    value={option.customerName}
-                                    sx={{
-                                        '&:hover': {
-                                            backgroundColor: 'var(----primary-color)',
-                                        }
-                                    }}
-                                >
-                                    {option.customerName}
-                                </MenuItem>
-                            ))}
-                        </StyledSelect>
+                        />
+                        {customers.length > 0 && (
+                            <Paper
+                                sx={{
+                                    position: 'absolute',
+                                    top: '73%',
+                                    left: 0,
+                                    right: 0,
+                                    zIndex: 10,
+                                    mt: 1,
+                                    maxHeight: 200,
+                                    border: '2px solid var(--primary-color)',
+                                    borderTop: 'none',
+                                    overflowY: 'auto',
+                                    backgroundColor: 'var(--surface-light)',
+                                }}
+                            >
+                                {customers.map((customer) => (
+                                    <Box
+                                        key={customer._id}
+                                        sx={{
+                                            p: 1,
+                                            cursor: 'pointer',
+                                            '&:hover': { backgroundColor: 'lightgray' },
+                                        }}
+                                        onClick={() => handleCustomerSelect(customer)}
+                                    >
+                                        {customer.customerName} {/* Display customerName */}
+                                    </Box>
+                                ))}
+                            </Paper>
+                        )}
                     </Box>
                     <Box flex={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
                         <StyledSelect
                             fullWidth
                             value={formData.site || ''}
-                            onChange={(e) => handleSearchChange('site', e.target.value)}
+                            onChange={(e) => { handleSearchChange('site', e.target.value); handleSiteChange(e.target.value) }}
                             disabled={!formData.customerName}
                             displayEmpty
                             renderValue={(value: unknown) => (value as string) || 'Select Site'}
@@ -823,7 +650,7 @@ const Bill = () => {
                             </MenuItem>
                             {productOptions
                                 .find(p => p.customerName === formData.customerName)
-                                ?.sites.map((site) => (
+                                ?.sites.map((site: string) => (
                                     <MenuItem
                                         key={site}
                                         value={site}
@@ -843,7 +670,7 @@ const Bill = () => {
                     name="startingDate"
                     label="Starting Date"
                     type="date"
-                    value={formData.startingDate?.toISOString()}
+                    value={formData.startingDate}
                     onChange={handleChange}
                     required
                     sx={{
@@ -864,7 +691,7 @@ const Bill = () => {
                     name="endingDate"
                     label="Ending Date"
                     type="date"
-                    value={formData.endingDate?.toISOString()}
+                    value={formData.endingDate}
                     onChange={handleChange}
                     required
                     sx={{
@@ -882,20 +709,62 @@ const Bill = () => {
                     }}
                 />
                 <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
-                    {isEditMode ? 'Update Purchase' : 'Save Purchase'}
+                    Get Bill
                 </Button>
             </Form>
+            <Box>
 
-            {(
-                // Loop over each month and display a DataGrid for each one
-                bill.map((billMonth, idx) => (
-                    <Paper sx={{ height: 600, width: '100%', marginBottom: 2 }} key={idx}>
+
+                {bill?.map((billMonth: any, idx: any) => (
+                    <Paper sx={{ width: '100%' }} key={idx}>
                         <CommonDataTable
-                        loading=
+                            loading={false}
+                            rows={{
+                                products: billMonth.products,
+                                year: billMonth.year,
+                                month: billMonth.month,
+                                totalAmount: billMonth.totalAmount
+                            }}
                         />
                     </Paper>
-                ))
-            )}
+                ))}
+
+                {/* {
+        // Loop over each month in the bill array and display a DataGrid for each one
+        bill?.map((billMonth: any, idx: any) => (
+            <Paper sx={{ height: 600, width: '100%', marginBottom: 2 }} key={idx}>
+                <CommonDataTable
+                    loading={false}
+                    rows={{
+                        year: billMonth.year,
+                        month: billMonth.month,
+                        totalAmount: billMonth.totalAmount,
+                        products: billMonth.products
+                    }}
+                />
+            </Paper>
+        ))
+    }
+
+{/* {
+    bill?.map((billMonth: any, idx: any) => (
+        <Paper sx={{ height: 600, width: '100%', marginBottom: 2 }} key={idx}>
+            <CommonDataTable
+                loading={false}
+                rows={{
+                    products: billMonth.products,
+                    year: billMonth.year,
+                    month: billMonth.month,
+                    totalAmount: billMonth.totalAmount
+                }}
+            />
+        </Paper>
+    ))
+} */}
+
+            </Box>
+
+
 
         </Box>
     );

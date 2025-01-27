@@ -46,23 +46,10 @@ interface CommonDataTableProps {
   loading: boolean;
 }
 
-const CommonDataTable: React.FC<CommonDataTableProps> = ({
-  rows = [
-    {
-      productName: 'Product A',
-      quantity: 5,
-      rate: 100,
-      amount: 15999.999994212963, // Could also be a string
-      month: 1,
-      year: 2024,
-      previousRestBill: 15999.999994212963,
-      startingDate: '2024-01-01T00:00:00.000Z',
-      endingDate: '2024-01-30T18:30:00.000Z',
-      dayCount: 30.770833333333332, // stored as string
-    },
-  ],
+const CommonDataTable: React.FC<any> = ({
+  rows,
   loading,
-}) => {
+}:{rows : any, loading: boolean}) => {
   const [gridFilterModel, setGridFilterModel] = useState<GridFilterModel>({
     items: [],
   });
@@ -76,7 +63,7 @@ const CommonDataTable: React.FC<CommonDataTableProps> = ({
       id: uuidv4(),
     }));
   };
-  const rowsWithIds = assignUniqueIds(rows);
+  const rowsWithIds = assignUniqueIds(rows.products);  
 
   const columns: GridColDef[] = [
     {
@@ -318,14 +305,6 @@ const CommonDataTable: React.FC<CommonDataTableProps> = ({
       // 3) Open WhatsApp with link
       shareOnWhatsApp(pdfUrl);
     };
-
-
-
-
-
-
-
-
     const shareText = 'Check out my purchase list for the month!';
     // Provide a phone number or leave it blank
     const phoneNumber = '+919427173635';
@@ -394,79 +373,90 @@ const CommonDataTable: React.FC<CommonDataTableProps> = ({
       </GridToolbarContainer>
     );
   };
-  return (
-    <Box>
-      {Object.keys(groupedRows).map((groupKey) => {
-        const [year, month] = groupKey.split('-');
-        const monthYearRows = groupedRows[groupKey];
-        const previousRestAmount = monthYearRows[0]?.previousRestBill || 0;
-        const monthTotal = monthYearRows.reduce((sum: number, row: any) => sum + (row.amount || 0), 0);
-        const totalWithRest = previousRestAmount + monthTotal;
+ return (
+  <Box>
+    {Object.keys(groupedRows).map((groupKey) => {
+      const [year, month] = groupKey.split('-');
+      const monthYearRows = groupedRows[groupKey];
+      const previousRestAmount = monthYearRows[0]?.previousRestBill || 0;
+      const monthTotal = monthYearRows.reduce((sum: number, row: any) => sum + (row.amount || 0), 0);
+      const totalWithRest = previousRestAmount + monthTotal;
 
-        // Create the header content
-        const headerContent = `${new Date(Number(year), Number(month) - 1).toLocaleString('default', { month: 'long' })} ${year} - Previous Rest Amount: ${previousRestAmount.toFixed(2)}`;
+      // Create the header content
+      const headerContent = `${new Date(Number(year), Number(month) - 1).toLocaleString('default', { month: 'long' })} ${year} - Previous Rest Amount: ${previousRestAmount.toFixed(2)}`;
 
-        return (
-          <Box border={'2px solid var(--primary-color)'} key={groupKey} sx={{ marginBottom: 3 }}>
-            <Paper sx={{ padding: 2, backgroundColor: 'var(--surface-light)' }}>
-              <DataGrid
-                ref={gridRef}
-                rows={monthYearRows}
-                columns={columns}
-                loading={loading}
-                columnVisibilityModel={columnVisibility}
-                onColumnVisibilityModelChange={(newModel) => setColumnVisibility(newModel)}
-                disableRowSelectionOnClick
-                hideFooterPagination={true}
-                sx={{
-                  border: 0,
-                  '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: 'var(--background-light)',
-                  },
-                  '& .MuiDataGrid-cell:focus': {
-                    outline: 'none',
-                  },
-                }}
-                slots={{
-                  toolbar: () => <CustomToolbar month={month} year={year} previousRestAmount={previousRestAmount} />,
-                  loadingOverlay: () => (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        height: '100%',
-                      }}
-                    >
-                      <CircularProgress color="primary" />
-                    </Box>
-                  ),
-                }}
-                getRowId={(row) => row.id!}
-              />
-              <Box sx={{
-                width: '100%',
-                display: 'flex',
-                justifyContent: 'space-between', marginTop: 2
-              }}>
-                <Typography marginLeft={2} variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {`Total Due Amount: ₹${(previousRestAmount + monthTotal).toFixed(2)}`}
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {`Month Amount: ₹${(monthTotal).toFixed(2)}`}
-                </Typography>
-              </Box>
-            </Paper>
-          </Box>
-        );
-      })}
-    </Box>
-  );
+      return (
+        <Box
+          key={groupKey}
+          border={'2px solid var(--primary-color)'}
+          sx={{ marginBottom: 3, display: 'flex', flexDirection: 'column' }}
+        >
+          <Paper
+            sx={{
+              padding: 2,
+              backgroundColor: 'var(--surface-light)',
+              boxShadow: 'var(--Paper-shadow)',
+              borderRadius: '4px',
+              flex: 1, // Allow the Paper to expand flexibly
+              marginBottom: 0, // Remove default margin-bottom (16px)
+              display: 'flex', // Use flexbox for better control
+              flexDirection: 'column',
+            }}
+          >
+            <DataGrid
+              ref={gridRef}
+              rows={monthYearRows}
+              columns={columns}
+              loading={loading}
+              columnVisibilityModel={columnVisibility}
+              onColumnVisibilityModelChange={(newModel) => setColumnVisibility(newModel)}
+              disableRowSelectionOnClick
+              hideFooterPagination={true}
+              sx={{
+                border: 0,
+                flexGrow: 1,  // Ensure DataGrid takes up available space
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: 'var(--background-light)',
+                },
+                '& .MuiDataGrid-cell:focus': {
+                  outline: 'none',
+                },
+                '& .MuiDataGrid-footer': {
+                  display: 'none',
+                },
+              }}
+              slots={{
+                toolbar: () => <CustomToolbar month={month} year={year} previousRestAmount={previousRestAmount} />,
+                loadingOverlay: () => (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      height: '100%',
+                    }}
+                  >
+                    <CircularProgress color="primary" />
+                  </Box>
+                ),
+              }}
+              getRowId={(row) => row.id!}
+            />
+            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+              <Typography marginLeft={2} variant="h6" sx={{ fontWeight: 'bold' }}>
+                {`Total Due Amount: ₹${(previousRestAmount + monthTotal).toFixed(2)}`}
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                {`Month Amount: ₹${(monthTotal).toFixed(2)}`}
+              </Typography>
+            </Box>
+          </Paper>
+        </Box>
+      );
+    })}
+  </Box>
+);
 
-
-
-
-
-
+  
 };
 export default CommonDataTable;
