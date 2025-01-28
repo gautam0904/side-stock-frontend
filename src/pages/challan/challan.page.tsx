@@ -256,12 +256,11 @@ const Challan = () => {
       const s = sites.find((s) => s.siteName == value)
       return {
         ...prev,
-        siteName: value,
+        siteName: s?.siteName||'',
         siteAddress: s?.siteAddress || ''
       };
     });
   };
-
 
   const handleProductChange = (index: number, field: keyof IProducts, value: any) => {
     setFormData(prev => {
@@ -270,6 +269,15 @@ const Challan = () => {
         ...newProducts[index],
         [field]: value
       };
+
+    if (field == 'productName' ) {
+      const customerPrize = selectedCustomer?.prizefix?.find((p)=> p.productName == value && p.size == formData.products[index].size )
+      updatedProduct.rate = customerPrize?.rate;
+    }
+    if (field == 'size' ) {
+      const customerPrize = selectedCustomer?.prizefix?.find((p)=> p.size == value && p.productName == formData.products[index].productName )
+      updatedProduct.rate = customerPrize?.rate;
+    }
 
       // Immediately calculate amount when quantity or rate changes
       if (field === 'quantity' || field === 'rate') {
@@ -395,17 +403,22 @@ const Challan = () => {
     }));
   }
   const handleExtraCharge = (field: keyof IChallan, value: any) => {
+    const sanitizedValue = value.replace(/,/g, '');
+  
+    const numericValue =Number(sanitizedValue)
+  
     setFormData((prev) => {
       const updatedFormData: IChallan = { ...prev };
   
-      (updatedFormData[field] as number) = value ?? 0;
+      (updatedFormData[field] as number) = numericValue;
   
-      const prevAmount = Number(prev[field]) ?? 0; 
-      updatedFormData.totalAmount = (prev.totalAmount ?? 0) - prevAmount + Number(value);
+      const prevAmount = Number(prev[field]) ?? 0;
+      updatedFormData.totalAmount = (prev.totalAmount ?? 0) - prevAmount + numericValue;
   
       return updatedFormData;
     });
   };
+  
   
   
 
@@ -490,7 +503,7 @@ const Challan = () => {
               ml: 1,
               textTransform: 'none',
               '&:hover': {
-                backgroundColor: 'primary.light',
+                backgroundColor: 'var(--primary-color)',
               }
             }}
           >
@@ -499,13 +512,6 @@ const Challan = () => {
         </Box>
       </GridToolbarContainer>
     );
-  };
-
-  const formatCurrency = (amount: number) => {
-    return `₹ ${amount.toLocaleString('en-IN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`;
   };
 
   const downloadPDF = (visibleColumns: any[]) => {
@@ -941,7 +947,7 @@ const Challan = () => {
                 value={size}
                 sx={{
                   '&:hover': {
-                    backgroundColor: 'primary.light',
+                    backgroundColor: 'var(--primary-color)',
                   }
                 }}
               >
@@ -954,7 +960,7 @@ const Challan = () => {
 
   );
 
-  const siteInput = (site: ISite) => (
+  const siteInput = (site: string) => (
     <Box sx={{
       display: 'flex',
       gap: 2,
@@ -967,7 +973,7 @@ const Challan = () => {
       <Box flex={2} sx={{ width: { xs: '100%', md: 'auto', margin: 'auto' } }}>
         <StyledSelect
           fullWidth
-          value={site?.siteName || ''}
+          value={site || ''}
           onChange={(e: SelectChangeEvent<unknown>) => {
             handleSiteChange(e.target.value);
           }}
@@ -997,7 +1003,7 @@ const Challan = () => {
           }}
         >
           <MenuItem disabled value="">
-            <em>Select Product</em>
+            <em>Select Site</em>
           </MenuItem>
           {sites?.map((option) => (
             <MenuItem
@@ -1076,32 +1082,23 @@ const Challan = () => {
     fetchCustomers(query);
   };
 
+  useEffect(() => {
+    // Prevent scroll changing number inputs
+    const handleWheel = (event:Event) => {
+      if ((document.activeElement as any)?.type === 'number') {
+        event.preventDefault();
+      }
+    };
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    return () => document.removeEventListener('wheel', handleWheel);
+  }, []);
+
 
   // Handle customer selection
   const handleCustomerSelect = (customer: ICutomer) => {
     setSelectedCustomer(customer);
     setSearchQuery(customer.customerName as string); // Optionally, set the search input to the selected customer name
     setCustomers([]);
-
-    setProductOptions((prev) => {
-      const groupedProducts = customer.prizefix?.reduce((acc: any[], product: Iprizefix) => {
-        const existing = acc.find(p => p.name === product.productName);
-        if (existing) {
-          if (!existing.sizes.includes(product.size)) {
-            existing.sizes.push(product.size);
-            existing.rate = product.rate
-          }
-        } else {
-          acc.push({ name: product.productName, sizes: [product.size] });
-        }
-        return acc;
-      }, []) || []; // Use empty array as fallback if groupedProducts is undefined
-
-      return [
-        ...prev,
-        ...groupedProducts
-      ];
-    });
 
     setSite(customer.sites || []);
 
@@ -1290,7 +1287,7 @@ const Challan = () => {
               {/* Second Row */}
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                 <Box flex={1}>
-                  {siteInput(sites[0])}
+                  {siteInput(formData.siteName)}
                 </Box>
                 <Box flex={1}>
                   <FormInput
@@ -1308,12 +1305,15 @@ const Challan = () => {
                     name="serviceCharge"
                     label="Service Charge"
                     type="number"
+                    min={0}
+                    max={9898998}
                     value={formData.serviceCharge}
                     onChange={(e) => (handleExtraCharge('serviceCharge', e.target.value))}
                   />
                 </Box>
                 <Box flex={1}>
                   <FormInput
+                  min={0}
                     name="damageCharge"
                     label="Damage Charge"
                     value={formData.damageCharge}
@@ -1328,6 +1328,7 @@ const Challan = () => {
                 <Box flex={1}>
                   <FormInput
                     name="loading"
+                    min={0}
                     label="Loading"
                     value={formData.loading}
                     onChange={(e) => (handleExtraCharge('loading', e.target.value))}
@@ -1337,6 +1338,7 @@ const Challan = () => {
                 <Box flex={1}>
                   <FormInput
                     name="unloading"
+                    min={0}
                     label="Unloading"
                     value={formData.unloading}
                     onChange={(e) => (handleExtraCharge('unloading', e.target.value))}
@@ -1346,6 +1348,7 @@ const Challan = () => {
                 <Box flex={1}>
                   <FormInput
                     name="transportCharge"
+                    min={0}
                     label="Transport Charge"
                     value={formData.transportCharge}
                     onChange={(e) => (handleExtraCharge('transportCharge', e.target.value))}
@@ -1389,6 +1392,7 @@ const Challan = () => {
                             name={`products.${index}.quantity`}
                             label="Quantity"
                             type="number"
+                            min={0}
                             value={product.quantity}
                             onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
                             required
@@ -1398,6 +1402,7 @@ const Challan = () => {
                           <FormInput
                             name={`products.${index}.rate`}
                             label="Rate"
+                            min={0}
                             type="number"
                             value={product.rate}
                             onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
@@ -1509,6 +1514,7 @@ const Challan = () => {
           loading={loading}
           disableRowSelectionOnClick
           getRowId={(row: any) => row._id}
+          hideFooterPagination={true}
           sx={{
             border: 0,
             '& .MuiDataGrid-columnHeaders': {

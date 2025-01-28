@@ -100,7 +100,7 @@ class ChallanService {
     const requestKey = this.createRequestKey(`/challan/delete/${id}`);
 
     return this.debounceRequest(requestKey, () =>
-      axiosInstance.delete(`/sale/delete/${id}`)
+      axiosInstance.delete(`/challan/delete/${id}`)
         .then(response => response.data)
         .catch(error => {
           console.error('Delete challan error:', error);

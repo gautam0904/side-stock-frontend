@@ -551,7 +551,7 @@ const PurchasesGST = () => {
               ml: 1,
               textTransform: 'none',
               '&:hover': {
-                backgroundColor: 'primary.light',
+                backgroundColor: 'var(--primary-color)',
               }
             }}
           >
@@ -1041,7 +1041,7 @@ const PurchasesGST = () => {
               value={option.name}
               sx={{
                 '&:hover': {
-                  backgroundColor: 'primary.light',
+                  backgroundColor: 'var(--primary-color)',
                 }
               }}
             >
@@ -1071,7 +1071,7 @@ const PurchasesGST = () => {
                 value={size}
                 sx={{
                   '&:hover': {
-                    backgroundColor: 'primary.light',
+                    backgroundColor: 'var(--primary-color)',
                   }
                 }}
               >

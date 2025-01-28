@@ -26,7 +26,11 @@ import {
     TableContainer,
     Grid,
     TextField,
-    debounce
+    debounce,
+    Divider,
+    Card,
+    CardContent,
+    Chip
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridFilterModel, GridLogicOperator, GridFilterItem } from '@mui/x-data-grid';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
@@ -52,6 +56,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import { ICutomer, Iprizefix, ISite } from 'src/DTO/customer.dto';
 import CommonDataTable from '../../components/dataTable/dataTable.component';
 import { customerService } from '../../api/customer.service';
+import { debug } from 'console';
 
 
 declare module 'jspdf' {
@@ -160,6 +165,7 @@ const Bill = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [billToDelete, setBillToDelete] = useState<string | null>(null);
     const [bill, setBill] = useState<IBill>();
+    const [billData, setBillData] = useState<any>();
     const [formData, setFormData] = useState<ISearchOption>(initialSearch);
     const [isEditMode, setIsEditMode] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -204,7 +210,6 @@ const Bill = () => {
     const handleClose = () => {
         setOpen(false);
         setIsEditMode(false);
-        setFormData(initialSearch);
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -223,10 +228,9 @@ const Bill = () => {
 
             // Make sure to use the correct path to access bill data
             const newBills = response.data?.bill || [];
-
+            setBillData(response.data.billData);
             setBill(newBills);
             handleClose();
-            setShouldFetch(true);
         } catch (error: any) {
             toast.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} purchase`);
         } finally {
@@ -255,7 +259,7 @@ const Bill = () => {
                             ml: 1,
                             textTransform: 'none',
                             '&:hover': {
-                                backgroundColor: 'primary.light',
+                                backgroundColor: 'var(--primary-color)',
                             }
                         }}
                     >
@@ -510,31 +514,30 @@ const Bill = () => {
 
     // Handle customer selection
     const handleCustomerSelect = (customer: ICutomer) => {
-        debugger
         setSearchQuery(customer.customerName as string);
         setCustomers([]);
 
         setProductOptions(customer.sites || []);
 
-        setProductOptions((prev) => {
-            const groupedProducts = customer.prizefix?.reduce((acc: any[], product: Iprizefix) => {
-                const existing = acc.find(p => p.name === product.productName);
-                if (existing) {
-                    if (!existing.sizes.includes(product.size)) {
-                        existing.sizes.push(product.size);
-                        existing.rate = product.rate
-                    }
-                } else {
-                    acc.push({ name: product.productName, sizes: [product.size] });
-                }
-                return acc;
-            }, []) || []; // Use empty array as fallback if groupedProducts is undefined
+        // setProductOptions((prev) => {
+        //     const groupedProducts = customer.prizefix?.reduce((acc: any[], product: Iprizefix) => {
+        //         const existing = acc.find(p => p.name === product.productName);
+        //         if (existing) {
+        //             if (!existing.sizes.includes(product.size)) {
+        //                 existing.sizes.push(product.size);
+        //                 existing.rate = product.rate
+        //             }
+        //         } else {
+        //             acc.push({ name: product.productName, sizes: [product.size] });
+        //         }
+        //         return acc;
+        //     }, []) || []; // Use empty array as fallback if groupedProducts is undefined
 
-            return [
-                ...prev,
-                ...groupedProducts
-            ];
-        });
+        //     return [
+        //         ...prev,
+        //         ...groupedProducts
+        //     ];
+        // });
 
         setFormData((prev) => {
 
@@ -545,7 +548,7 @@ const Bill = () => {
                 mobileNumber: customer.mobileNumber as string,
             };
 
-            if (customer.sites?.length || 0 < 1) {
+            if (customer.sites?.length || 0 < 2) {
                 updatedForm.site = customer?.sites?.[0].siteName || '';
             }
 
@@ -553,168 +556,332 @@ const Bill = () => {
         });
     };
 
+    const handleSiteSelect = (site: string) => {
+        setFormData(prev => {
+            return {
+                ...prev,
+                siteName: site
+            }
+        })
+    }
+
+    const StyledCard = styled(Card)({
+        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
+        borderRadius: '12px',
+        backgroundColor: '#f7f7f7',
+        padding: '20px',
+        transition: 'all 0.3s ease',
+        '&:hover': {
+            boxShadow: '0px 8px 30px rgba(0, 0, 0, 0.15)',
+        },
+    });
+
     return (
         <Box sx={{ p: 2 }}>
             <Form onSubmit={handleSubmit}>
-                <Box sx={{
-                    display: 'flex',
-                    gap: 2,
-                    alignItems: 'center',
-                    flexDirection: { xs: 'column', md: 'row' },
-                    width: '100%',
-                    mb: 2
-                }}>
-                    <Box flex={1} sx={{
-                        position: 'relative',
+                <Box sx={{ display: 'flex' }}>
+                    <Box sx={{
                         display: 'flex',
-                        justifyContent: 'center',
+                        gap: 2,
                         alignItems: 'center',
+                        flexDirection: { xs: 'column', md: 'row' },
                         width: '100%',
-                        margin: 'auto',
-                        '& .MuiBox-root': {
-                            margin: 'auto'
-                        },
+                        mb: 2
                     }}>
-                        <TextField
-                            label="Customer Name"
-                            value={searchQuery}
-                            className="customer-name-input"
-                            onChange={handleCustomerSearchChange}
-                            fullWidth
-                            required
-                            autoComplete="on"
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                                height: '55px',
-                                '& .MuiInputBase-root': {
-                                    height: '55px',
-                                },
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '4px',
-                                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: '#7b4eff',
-                                        color: '#7b4eff'
-                                    },
-                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: '#7b4eff',
-                                        color: '#7b4eff'
-                                    },
-                                },
-                            }}
-                        />
-                        {customers.length > 0 && (
-                            <Paper
+                        <Box flex={1} sx={{
+                            position: 'relative',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            width: '100%',
+                            margin: 'auto',
+                            '& .MuiBox-root': {
+                                margin: 'auto'
+                            },
+                        }}>
+                            <TextField
+                                label="Customer Name"
+                                value={searchQuery}
+                                className="customer-name-input"
+                                onChange={handleCustomerSearchChange}
+                                fullWidth
+                                required
+                                autoComplete="on"
+                                variant="outlined"
+                                size="small"
                                 sx={{
-                                    position: 'absolute',
-                                    top: '73%',
-                                    left: 0,
-                                    right: 0,
-                                    zIndex: 10,
-                                    mt: 1,
-                                    maxHeight: 200,
-                                    border: '2px solid var(--primary-color)',
-                                    borderTop: 'none',
-                                    overflowY: 'auto',
-                                    backgroundColor: 'var(--surface-light)',
+                                    textAlign: 'justify',
+                                    height: '55px',
+                                    '& .MuiInputBase-root': {
+                                        height: '55px',
+                                    },
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: '4px',
+                                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                                            borderColor: '#7b4eff',
+                                            color: '#7b4eff'
+                                        },
+                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                            borderColor: '#7b4eff',
+                                            color: '#7b4eff'
+                                        },
+                                    },
                                 }}
+                            />
+                            {customers.length > 0 && (
+                                <Paper
+                                    sx={{
+                                        position: 'absolute',
+                                        top: '73%',
+                                        left: 0,
+                                        right: 0,
+                                        zIndex: 10,
+                                        textAlign: 'justify',
+                                        mt: 1,
+                                        maxHeight: 200,
+                                        border: '2px solid var(--primary-color)',
+                                        borderTop: 'none',
+                                        overflowY: 'auto',
+                                        backgroundColor: 'var(--surface-light)',
+                                    }}
+                                >
+                                    {customers.map((customer) => (
+                                        <Box
+                                            key={customer._id}
+                                            sx={{
+                                                p: 1,
+                                                cursor: 'pointer',
+                                                '&:hover': { backgroundColor: 'lightgray' },
+                                            }}
+                                            onClick={() => handleCustomerSelect(customer)}
+                                        >
+                                            {customer.customerName} {/* Display customerName */}
+                                        </Box>
+                                    ))}
+                                </Paper>
+                            )}
+                        </Box>
+                        <Box flex={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
+                            <StyledSelect
+                                fullWidth
+                                value={formData.site || ''}
+                                onChange={(e) => { handleSearchChange('site', e.target.value); handleSiteChange(e.target.value) }}
+                                disabled={!formData.customerName}
+                                displayEmpty
+                                renderValue={(value: unknown) => (value as string) || 'Select Site'}
+                                sx={{ minWidth: { xs: '100%', height: '55px', md: 150, textAlign: 'justify' } }}
                             >
-                                {customers.map((customer) => (
-                                    <Box
-                                        key={customer._id}
-                                        sx={{
-                                            p: 1,
-                                            cursor: 'pointer',
-                                            '&:hover': { backgroundColor: 'lightgray' },
-                                        }}
-                                        onClick={() => handleCustomerSelect(customer)}
-                                    >
-                                        {customer.customerName} {/* Display customerName */}
-                                    </Box>
-                                ))}
-                            </Paper>
-                        )}
-                    </Box>
-                    <Box flex={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
-                        <StyledSelect
-                            fullWidth
-                            value={formData.site || ''}
-                            onChange={(e) => { handleSearchChange('site', e.target.value); handleSiteChange(e.target.value) }}
-                            disabled={!formData.customerName}
-                            displayEmpty
-                            renderValue={(value: unknown) => (value as string) || 'Select Site'}
-                            sx={{ minWidth: { xs: '100%', md: 150 } }}
-                        >
-                            <MenuItem disabled value="">
-                                <em>Select Site</em>
-                            </MenuItem>
-                            {productOptions
-                                .find(p => p.customerName === formData.customerName)
-                                ?.sites.map((site: string) => (
+                                <MenuItem disabled value="" sx={{ textAlign: 'justify' }}>
+                                    Select Site
+                                </MenuItem>
+                                {productOptions.map((site: ISite) => (
                                     <MenuItem
-                                        key={site}
-                                        value={site}
+                                        key={site.siteName}
+                                        value={site.siteName}
                                         sx={{
                                             '&:hover': {
-                                                backgroundColor: 'primary.light',
+                                                backgroundColor: 'var(--primary-color)',
                                             }
                                         }}
+                                        onClick={() => handleSiteSelect(site.siteName)}
                                     >
-                                        {site}
+                                        {site.siteName}
                                     </MenuItem>
                                 ))}
-                        </StyledSelect>
+                            </StyledSelect>
+                        </Box>
                     </Box>
                 </Box>
-                <FormInput
-                    name="startingDate"
-                    label="Starting Date"
-                    type="date"
-                    value={formData.startingDate}
-                    onChange={handleChange}
-                    required
-                    sx={{
-                        '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                            cursor: 'pointer',
-                            padding: '8px',
-                            filter: 'invert(0.5)',
-                            '&:hover': {
-                                opacity: 0.7
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <FormInput
+                        name="startingDate"
+                        label="Starting Date"
+                        type="date"
+                        fullWidth={false}
+                        value={formData.startingDate}
+                        onChange={handleChange}
+                        required
+                        sx={{
+                            '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                                cursor: 'pointer',
+                                padding: '8px',
+                                filter: 'invert(0.5)',
+                                '&:hover': {
+                                    opacity: 0.7
+                                }
+                            },
+                            '& input[type="date"]': {
+                                colorScheme: 'light'
                             }
-                        },
-                        '& input[type="date"]': {
-                            colorScheme: 'light'
-                        }
-                    }}
-                />
-                <FormInput
-                    name="endingDate"
-                    label="Ending Date"
-                    type="date"
-                    value={formData.endingDate}
-                    onChange={handleChange}
-                    required
-                    sx={{
-                        '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                            cursor: 'pointer',
-                            padding: '8px',
-                            filter: 'invert(0.5)',
-                            '&:hover': {
-                                opacity: 0.7
+                        }}
+                    />
+                    <FormInput
+                        name="endingDate"
+                        label="Ending Date"
+                        fullWidth={false}
+                        type="date"
+                        value={formData.endingDate}
+                        onChange={handleChange}
+                        required
+                        sx={{
+                            '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                                cursor: 'pointer',
+                                padding: '8px',
+                                filter: 'invert(0.5)',
+                                '&:hover': {
+                                    opacity: 0.7
+                                }
+                            },
+                            '& input[type="date"]': {
+                                colorScheme: 'light'
                             }
-                        },
-                        '& input[type="date"]': {
-                            colorScheme: 'light'
-                        }
-                    }}
-                />
-                <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
-                    Get Bill
-                </Button>
+                        }}
+                    />
+                    <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
+                        Get Bill
+                    </Button>
+                </Box>
             </Form>
+            {billData ?
+                <Box sx={{ p: 3, mt: 4, maxWidth: '800px', margin: '0 auto' }}>
+                    {/* Bill Header */}
+                    <Typography variant="h4" sx={{
+                        fontWeight: '600',
+                        color: '#4A4A4A',
+                        textAlign: 'left', // Align left
+                        mb: 4,
+                        fontSize: { xs: '1.5rem', sm: '2rem' }
+                    }}>
+                        Bill Details
+                    </Typography>
+
+                    {/* Bill Information */}
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="h6" sx={{
+                            fontWeight: '500',
+                            color: '#4A4A4A',
+                            mb: 2,
+                            fontSize: '1.1rem',
+                            textAlign: 'left' // Align left
+                        }}>
+                            Bill Summary
+                        </Typography>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} md={6}>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Bill Name:</strong> {billData.billName}
+                                </Typography>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Mobile Number:</strong> {billData.mobileNumber}
+                                </Typography>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Bill Number:</strong> {billData.billNumber}
+                                </Typography>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Partner Name:</strong> {billData.partnerName}
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Partner Mobile:</strong> {billData.partnerMobileNumber}
+                                </Typography>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Reference:</strong> {billData.reference}
+                                </Typography>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Reference Mobile:</strong> {billData.referenceMobileNumber}
+                                </Typography>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Site:</strong> {billData.siteName}
+                                </Typography>
+                            </Grid>
+                        </Grid>
+                    </Box>
+
+                    {/* Bill Address */}
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="h6" sx={{
+                            fontWeight: '500',
+                            color: '#4A4A4A',
+                            mb: 2,
+                            fontSize: '1.1rem',
+                            textAlign: 'left' // Align left
+                        }}>
+                            Address Information
+                        </Typography>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} md={6}>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Bill Address:</strong> {billData.billAddress}
+                                </Typography>
+                                <Typography variant="body1" sx={{ mb: 1.5, textAlign: 'left' }}> {/* Align left */}
+                                    <strong>Site Address:</strong> {billData.siteAddress}
+                                </Typography>
+                            </Grid>
+                        </Grid>
+                    </Box>
+
+                    {/* Challans Section */}
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="h6" sx={{
+                            fontWeight: '500',
+                            color: '#4A4A4A',
+                            mb: 2,
+                            fontSize: '1.1rem',
+                            textAlign: 'left' // Align left
+                        }}>
+                            Challans
+                        </Typography>
+                        <Grid container spacing={2}>
+                            {billData.challans.map((challan: any, index: number) => (
+                                <Grid item xs={12} sm={6} key={challan._id}>
+                                    <Box sx={{
+                                        backgroundColor: '#F9F9F9',
+                                        borderRadius: '8px',
+                                        p: 2,
+                                        textAlign: 'left', // Align left
+                                        border: '1px solid #E0E0E0'
+                                    }}>
+                                        <Typography variant="body2" sx={{ fontWeight: '500', mb: 1 }}>
+                                            Challan ID
+                                        </Typography>
+                                        <Chip
+                                            label={challan._id}
+                                            color="primary"
+                                            sx={{
+                                                fontWeight: '500',
+                                                fontSize: '0.875rem',
+                                                borderRadius: '6px'
+                                            }}
+                                        />
+                                    </Box>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </Box>
+
+                    {/* Footer Section */}
+                    <Box sx={{
+                        mt: 4,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 2,
+                        borderTop: '1px solid #E0E0E0',
+                        pt: 2
+                    }}>
+                        <Typography variant="body2" sx={{ color: '#666', fontWeight: '400', textAlign: 'left' }}> {/* Align left */}
+                            <strong>Today's Date:</strong> {new Date(billData.today).toLocaleDateString()}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#666', fontWeight: '400', textAlign: 'left' }}> {/* Align left */}
+                            <strong>Bill Date:</strong> {new Date(billData.date).toLocaleDateString()}
+                        </Typography>
+                    </Box>
+                </Box>
+                : ''
+            }
             <Box>
-
-
                 {bill?.map((billMonth: any, idx: any) => (
                     <Paper sx={{ width: '100%' }} key={idx}>
                         <CommonDataTable

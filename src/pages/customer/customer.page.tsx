@@ -499,10 +499,7 @@ const Customer = () => {
     };
 
     const handleEditClick = (purchase: any) => {
-        setFormData({
-            ...purchase,
-            date: new Date(purchase.date).toISOString().split('T')[0]
-        });
+        setFormData(purchase);
         setIsEditMode(true);
         setOpen(true);
     };
@@ -530,7 +527,7 @@ const Customer = () => {
                             ml: 1,
                             textTransform: 'none',
                             '&:hover': {
-                                backgroundColor: 'primary.light',
+                                backgroundColor: 'var(--primary-color)',
                             }
                         }}
                     >
@@ -781,7 +778,6 @@ const Customer = () => {
     // Add custom product selection dialog
     const DetailPanelDialog = () => {
         const selectedCustomer = customer.find(p => p._id == selectedProductIndex?.toString());
-
         if (!selectedCustomer) return null;
 
         return (
@@ -796,51 +792,51 @@ const Customer = () => {
                     <Box sx={{ mb: 3 }}>
 
                         <Grid container spacing={2}>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">GST Number:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">GST Number: </Typography>
                                 <Typography>{selectedCustomer.GSTnumber}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Customer Name:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Customer Name: </Typography>
                                 <Typography>{selectedCustomer.customerName}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Mobile Number:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Mobile Number: </Typography>
                                 <Typography>{selectedCustomer.mobileNumber}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Rcedent Address:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Rcedent Address: </Typography>
                                 <Typography>{selectedCustomer.residentAddress}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Pan Card Number:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Pan Card Number: </Typography>
                                 <Typography>{selectedCustomer.pancardNo}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Aadhar Card Number:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Aadhar Card Number: </Typography>
                                 <Typography>{selectedCustomer.aadharNo}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Partner Name:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Partner Name: </Typography>
                                 <Typography>{selectedCustomer.partnerName}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Partner Number:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Partner Number: </Typography>
                                 <Typography>{selectedCustomer.partnerMobileNumber}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Reference :</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Reference : </Typography>
                                 <Typography>{selectedCustomer.reference}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="textSecondary">Reference Number:</Typography>
+                            <Grid item xs={6} sx={{display: 'flex'}}>
+                                <Typography variant="body2" color="var(--primary-color)">Reference Number: </Typography>
                                 <Typography>{selectedCustomer.referenceMobileNumber}</Typography>
                             </Grid>
                         </Grid>
                     </Box>
 
                     {/* Products Table */}
-                    <Typography variant="subtitle1" gutterBottom>Products</Typography>
+                    <Typography variant="subtitle1" color='var(--primary-color)' gutterBottom>Products</Typography>
                     <TableContainer component={Paper} variant="outlined">
                         <Table size="small">
                             <TableHead>
@@ -864,7 +860,7 @@ const Customer = () => {
 
                     {/* Sites Section */}
                     <Box sx={{ mt: 3 }}>
-                        <Typography variant="subtitle1" gutterBottom>Sites</Typography>
+                        <Typography variant="subtitle1" color='var(--primary-color)' gutterBottom>Sites</Typography>
                         <TableContainer component={Paper} variant="outlined">
                             <Table size="small">
                                 <TableHead>
@@ -886,10 +882,10 @@ const Customer = () => {
                     </Box>
                     {/* images */}
                     <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" gutterBottom>Documents & Photos</Typography>
+                        <Typography variant="subtitle1" color='var(--primary-color)' gutterBottom>Documents & Photos</Typography>
                         {selectedCustomer.aadharPhoto && (
                             <Grid item xs={12} md={4}>
-                                <Typography variant="body2" color="textSecondary">Aadhar Card:</Typography>
+                                <Typography variant="body2" color="var(--primary-color)">Aadhar Card:</Typography>
                                 <Box
                                     component="img"
                                     src={typeof selectedCustomer.aadharPhoto === 'string' ? selectedCustomer.aadharPhoto : ''}
@@ -905,7 +901,7 @@ const Customer = () => {
                         )}
                         {selectedCustomer.panCardPhoto && (
                             <Grid item xs={12} md={4}>
-                                <Typography variant="body2" color="textSecondary">Pan Card Card:</Typography>
+                                <Typography variant="body2" color="var(--primary-color)">Pan Card Card:</Typography>
                                 <Box
                                     component="img"
                                     src={typeof selectedCustomer.panCardPhoto === 'string' ? selectedCustomer.panCardPhoto : ''}
@@ -921,7 +917,7 @@ const Customer = () => {
                         )}
                         {selectedCustomer.customerPhoto && (
                             <Grid item xs={12} md={4}>
-                                <Typography variant="body2" color="textSecondary">Customer Card:</Typography>
+                                <Typography variant="body2" color="var(--primary-color)">Customer Card:</Typography>
                                 <Box
                                     component="img"
                                     src={typeof selectedCustomer.customerPhoto === 'string' ? selectedCustomer.customerPhoto : ''}
@@ -1005,7 +1001,7 @@ const Customer = () => {
                                 value={size}
                                 sx={{
                                     '&:hover': {
-                                        backgroundColor: 'primary.light',
+                                        backgroundColor: 'var(--primary-color)',
                                     }
                                 }}
                             >
