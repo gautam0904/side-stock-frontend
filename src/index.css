@@ -102,7 +102,6 @@ input, textarea {
   color: var(--text-dark);
   padding: 0.5rem;
   border-radius: 4px;
-  margin-bottom: 1rem;
 }
 
 input:focus, textarea:focus {
