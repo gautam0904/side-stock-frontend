@@ -19,7 +19,17 @@
 }
 
 .main-content {
-  margin-top: 60px !important;
+  margin-top: 80px !important;
+}
+
+.css-szs9uf-MuiPaper-root {
+  background-color: #fff;
+  color: rgba(0, 0, 0, 0.87);
+  -webkit-transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+  transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+  border-radius: 4px;
+  box-shadow: var(--Paper-shadow);
+  background-image: var(--Paper-overlay);
 }
 
 @keyframes logo-spin {

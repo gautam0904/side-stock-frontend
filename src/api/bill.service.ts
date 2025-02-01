@@ -36,26 +36,13 @@ class BillService {
     return promise;
   }
 
-  getAllBill(params: GetCustomersParams = {}, signal?: AbortSignal) {
-    const {
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-      search = ''
-    } = params;
-
+  getAllBill(params: any = {}, signal?: AbortSignal) {
     const requestKey = this.createRequestKey('/bill/get', params);
+console.log(params);
 
     return this.debounceRequest(requestKey, () =>
       axiosInstance.get('/bill/get', {
-        params: {
-          page,
-          limit,
-          sortBy,
-          sortOrder,
-          search
-        },
+        params,
         signal
       })
       .then(response => response.data)

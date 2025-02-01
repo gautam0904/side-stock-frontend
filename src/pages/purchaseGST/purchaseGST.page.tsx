@@ -45,6 +45,7 @@ import {
 } from '@mui/x-data-grid';
 import { SelectChangeEvent } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import InfoIcon from '@mui/icons-material/Info';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -192,7 +193,7 @@ const PurchasesGST = () => {
             setProductPopupOpen(true);
           }}
         >
-          <KeyboardArrowDownIcon />
+          <InfoIcon/>
         </IconButton>
       )
     },
@@ -550,7 +551,7 @@ const PurchasesGST = () => {
               ml: 1,
               textTransform: 'none',
               '&:hover': {
-                backgroundColor: 'primary.light',
+                backgroundColor: 'var(--primary-color)',
               }
             }}
           >
@@ -759,6 +760,29 @@ const PurchasesGST = () => {
 
     doc.save('purchases-list.pdf');
   };
+
+  const handleTotalChange = (value: number) => {
+    setFormData(prev => {
+      const transportCost = value || 0;
+      const subTotal = prev.products.reduce((sum, product) => sum + (product.amount || 0), 0);
+      const baseAmount = subTotal + transportCost;
+  
+      // GST Calculation
+      const gstAmount = prev.GSTnumber.startsWith('24')
+        ? prev.sgst + prev.cgst
+        : prev.igst;
+  
+      // Update totalAmount with correct rounding
+      const totalAmount = baseAmount + gstAmount;
+  
+      return {
+        ...prev,
+        transportAndCasting: transportCost,
+        totalAmount: parseFloat(totalAmount.toFixed(2)), // rounding to 2 decimal places
+      };
+    });
+  };
+  
 
   const handleGSTRateChange = (type: 'sgstRate' | 'cgstRate' | 'igstRate', value: number) => {
     setGstRates(prev => ({
@@ -1017,7 +1041,7 @@ const PurchasesGST = () => {
               value={option.name}
               sx={{
                 '&:hover': {
-                  backgroundColor: 'primary.light',
+                  backgroundColor: 'var(--primary-color)',
                 }
               }}
             >
@@ -1047,7 +1071,7 @@ const PurchasesGST = () => {
                 value={size}
                 sx={{
                   '&:hover': {
-                    backgroundColor: 'primary.light',
+                    backgroundColor: 'var(--primary-color)',
                   }
                 }}
               >
@@ -1394,7 +1418,7 @@ const PurchasesGST = () => {
                     containerClassName='w-1/4'
                     fullWidth={false}
                     value={formData.transportAndCasting.toString()}
-                    onChange={handleChange}
+                    onChange={(e) => handleTotalChange( Number(e.target.value))}
                   />
 
                   <Typography>Sub Total: ₹{Number(formData.amount).toFixed(2)}</Typography>

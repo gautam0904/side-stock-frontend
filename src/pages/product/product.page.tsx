@@ -253,7 +253,6 @@ const Products = () => {
   const handleEditClick = (purchase: any) => {
     setFormData({
       ...purchase,
-      date: new Date(purchase.date).toISOString().split('T')[0]
     });
     setIsEditMode(true);
     setOpen(true);

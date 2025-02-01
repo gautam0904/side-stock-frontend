@@ -160,21 +160,6 @@ const Dashboard: React.FC = () => {
     { key: 'customer-new', text: 'Add Customer', icon: PersonAddAltIcon, path: '/customerNonGST/new' },
   ];
 
-  // const gstMenuItems = [
-  //   { key: 'stocks&reports', text: 'Stocks & Reports', icon: ReceiptIcon, path: '/stocks' },
-  //   { key: 'add-sale', text: 'Add Sale', icon: CategoryIcon, path: '/sales/new' },
-  //   { key: 'add-purchase', text: 'Add Purchase', icon: StoreIcon, path: '/purchasesGST/new' },
-  //   { key: 'add-new-customer', text: 'Add New Customer', icon: PersonAddAltIcon, path: '/customersGST/new' },
-  // ];
-
-  // const nonGstMenuItems = [
-  //   { key: 'stocks&price', text: 'Stocks & Price', icon: ReceiptIcon, path: '/stocks' },
-  //   { key: 'challan', text: 'Challan', icon: StoreIcon, path: '/challan' },
-  //   { key: 'payment', text: 'Payment', icon: CategoryIcon, path: '/payment' },
-  //   { key: 'direct-bill', text: 'Direct Bill', icon: PersonAddAltIcon, path: '/bill/new' },
-  //   { key: 'customer-new', text: 'Add Customer', icon: AddShoppingCartIcon, path: '/customerNonGST/new' }, // Unique Icon
-  // ];
-
   // Added more unique icons to avoid repetition
   const additionalMenuItems = [
     { key: 'product-management', text: 'Product Management', icon: ProductionQuantityLimitsIcon, path: '/products' },
