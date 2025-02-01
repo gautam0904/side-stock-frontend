@@ -105,7 +105,7 @@ export const FormInput: React.FC<FormInputProps> = ({
                   size: "medium",
                   sx: {
                     '& .MuiInputBase-root': {
-                      height: '56px',
+                      height: '35px',
                       backgroundColor: 'var(--surface-light)',
                     },
                     '& .MuiInputLabel-root': {
@@ -153,10 +153,10 @@ export const FormInput: React.FC<FormInputProps> = ({
   };
 
   return (
-    <div className={`form-field-container ${containerClassName} ${fullWidth ? 'full-width' : ''}`}>
+    <div className={`form-field-container ${containerClassName} ${fullWidth ? 'full-width' : ''}`} >
       <div className="form-field-wrapper">
-        <input {...inputProps} />
-        <label htmlFor={name} className="floating-label">
+        <input {...inputProps}  height={'35px'}/>
+        <label htmlFor={name} className="floating-label" >
           {label}
           {required && <span className="required-star">*</span>}
         </label>

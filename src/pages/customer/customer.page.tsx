@@ -1244,10 +1244,6 @@ const Customer = () => {
                                         type="tel"
                                     />
                                 </Box>
-                            </Stack>
-
-                            {/* 4 Row */}
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                                 <Box flex={1}>
                                     <FormInput
                                         name="aadharNo"
