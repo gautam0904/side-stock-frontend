@@ -1,5 +1,5 @@
 .form-field-container {
-    margin: 1rem 0px 0px 0px;
+    margin: 0px 0px 0px 0px;
 }
 
 .full-width {
@@ -13,7 +13,7 @@
 
 .form-input {
     width: 100%;
-    height: 55px;
+    height: 35px !important;
     font-size: 1rem;
     background-color: var(--surface-light);
     border: 1px solid var(--border-color);
@@ -80,4 +80,9 @@
 .required-star {
     color: var(--error-color);
     margin-left: 4px;
+}
+
+
+.MuiTextField-root .MuiInputBase-root{
+    height: 35px !important;
 }
