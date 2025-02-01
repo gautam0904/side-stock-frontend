@@ -1,3 +1,3 @@
 export const environment = {
-    apiUrl: 'https://side-stock-backend.onrender.com'
+    apiUrl: import.meta.env.VITE_BACKEND
 }
