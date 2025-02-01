@@ -1,5 +1,3 @@
-// export default FormInput;
-
 import React from 'react';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -27,11 +25,11 @@ interface FormInputProps {
   fullWidth?: boolean;
   sx?: React.CSSProperties | any;
   disabled?: boolean;
-  min?: number; // min value for number type
-  max?: number; // max value for number type
+  min?: number; 
+  max?: number; 
   onClick?: (e: React.MouseEvent<HTMLInputElement>) => void;
   InputProps?: React.ComponentProps<typeof TextField>['InputProps'];
-  [key: string]: any; // Allow other extra props to be passed in
+  [key: string]: any; 
 }
 
 export const FormInput: React.FC<FormInputProps> = ({
@@ -57,7 +55,7 @@ export const FormInput: React.FC<FormInputProps> = ({
   max,
   onClick,
   InputProps,
-  ...rest // capture extra props
+  ...rest 
 }) => {
   const [error, setError] = React.useState<string | undefined>();
 
@@ -125,7 +123,7 @@ export const FormInput: React.FC<FormInputProps> = ({
                   disabled
                 }
               }}
-              {...rest} // Pass any extra props for the DatePicker
+              {...rest} 
             />
           </LocalizationProvider>
         </div>
@@ -133,7 +131,6 @@ export const FormInput: React.FC<FormInputProps> = ({
     );
   }
 
-  // Number type handling
   const inputProps: React.InputHTMLAttributes<HTMLInputElement> = {
     id: name,
     name,
