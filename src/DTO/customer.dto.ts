@@ -31,4 +31,5 @@ export interface Iprizefix {
 export interface ISite {
     siteName: string;
     siteAddress: string;
+    challanNumber: string;
   }

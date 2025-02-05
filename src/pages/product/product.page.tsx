@@ -16,32 +16,14 @@ import {
   CircularProgress,
   Stack,
   Paper,
-  ButtonGroup,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { GridToolbar } from '@mui/x-data-grid';
-import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import AddIcon from '@mui/icons-material/Add';
 import Form from '../../components/form/form.component';
 import { FormInput } from '../../components/formInput/formInput.component';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import FirstPageIcon from '@mui/icons-material/FirstPage';
-import LastPageIcon from '@mui/icons-material/LastPage';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 
 
 interface IProducts {
@@ -52,6 +34,7 @@ interface IProducts {
   stock:number;
   rented:number;
   loss:number;
+  totalStock:number;
 }
 
 const initialFormData: IProducts = {
@@ -60,38 +43,15 @@ const initialFormData: IProducts = {
   stock: 0,
   rented: 0,
   loss: 0,
+  totalStock:0
 };
-
-// const initialFormData: IPurchase = {
-//   GSTnumber: '',
-//   billNumber: '',
-//   date: new Date(),
-//   companyName: '',
-//   supplierName: '',
-//   supplierNumber: '',
-//   products: [{
-//     _id: '',
-//     size: '',
-//     productName: '',
-//     quantity: 0,
-//     rate: 0,
-//     amount: 0
-//   }],
-//   transportAndCasting: 0,
-//   amount: 0,
-//   sgst: 0,
-//   cgst: 0,
-//   igst: 0,
-//   totalAmount: 0,
-// };
 
 const modalStyle = {
   position: 'absolute',
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: '90%',
-  maxWidth: '1200px',
+  width: '100%',
   bgcolor: 'background.paper',
   boxShadow: 24,
   p: 4,
@@ -113,12 +73,6 @@ const Products = () => {
     pageSize: 10
   });
   const [totalRows, setTotalRows] = useState(0);
-  const [gstRates, setGstRates] = useState({
-    sgstRate: 9,
-    cgstRate: 9,
-    igstRate: 18
-  });
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [shouldFetch, setShouldFetch] = useState(true);
   const fetchInProgress = useRef(false);
   const [products, setProducts] = useState<IProducts[]>([]);
@@ -192,7 +146,6 @@ const Products = () => {
     }
   }, [shouldFetch, paginationModel.page, paginationModel.pageSize, fetchProducts]);
 
-  const handleOpen = () => setOpen(true);
   const handleClose = () => {
     setOpen(false);
     setIsEditMode(false);
@@ -258,154 +211,6 @@ const Products = () => {
     setOpen(true);
   };
 
-  const CustomPagination = () => {
-    const pageCount = paginationModel.pageSize === -1
-      ? 1
-      : Math.max(1, Math.ceil(totalRows / paginationModel.pageSize));
-
-    const handlePageChange = (newPage: number) => {
-      if (newPage >= 0 && newPage < pageCount) {
-        setPaginationModel(prev => ({ ...prev, page: newPage }));
-        setShouldFetch(true);
-      }
-    };
-
-    const startItem = paginationModel.pageSize === -1
-      ? 1
-      : paginationModel.page * paginationModel.pageSize + 1;
-
-    const endItem = paginationModel.pageSize === -1
-      ? totalRows
-      : Math.min((paginationModel.page + 1) * paginationModel.pageSize, totalRows);
-
-    return (
-      <Stack spacing={2} sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2">
-              Rows per page:
-            </Typography>
-            <Select
-              value={paginationModel.pageSize}
-              onChange={(e) => {
-                const newSize = Number(e.target.value);
-                setPaginationModel({
-                  page: 0,
-                  pageSize: newSize
-                });
-                setShouldFetch(true);
-              }}
-              size="small"
-              sx={{ minWidth: 80 }}
-            >
-              {[5, 10, 25, 50].map((size) => (
-                <MenuItem key={size} value={size}>
-                  {size}
-                </MenuItem>
-              ))}
-              <MenuItem value={-1}>All</MenuItem>
-            </Select>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2">
-              {paginationModel.pageSize === -1
-                ? `1-${totalRows} of ${totalRows}`
-                : `${paginationModel.page * paginationModel.pageSize + 1}-${Math.min((paginationModel.page + 1) * paginationModel.pageSize, totalRows)} of ${totalRows}`
-              }
-            </Typography>
-            <ButtonGroup
-              size="small"
-              sx={{
-                '& .MuiButton-root': {
-                  minWidth: '40px',
-                  px: 1,
-                }
-              }}
-            >
-              <Button
-                onClick={() => {
-                  setPaginationModel({ ...paginationModel, page: 0 });
-                  setShouldFetch(true);
-                }}
-                disabled={paginationModel.page === 0 || paginationModel.pageSize === -1}
-                title="First Page"
-                sx={{
-                  '&.Mui-disabled': {
-                    opacity: 0.5,
-                  }
-                }}
-              >
-                <FirstPageIcon fontSize="small" />
-              </Button>
-              <Button
-                onClick={() => {
-                  setPaginationModel(prev => ({ ...prev, page: prev.page - 1 }));
-                  setShouldFetch(true);
-                }}
-                disabled={paginationModel.page === 0 || paginationModel.pageSize === -1}
-                title="Previous Page"
-                sx={{
-                  '&.Mui-disabled': {
-                    opacity: 0.5,
-                  }
-                }}
-              >
-                <NavigateBeforeIcon fontSize="small" />
-              </Button>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  px: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: 'background.paper',
-                  minWidth: '80px',
-                  justifyContent: 'center'
-                }}
-              >
-                <Typography variant="body2">
-                  {totalRows > 0 ? `${paginationModel.page + 1} of ${pageCount}` : '0 of 0'}
-                </Typography>
-              </Box>
-              <Button
-                onClick={() => {
-                  setPaginationModel(prev => ({ ...prev, page: prev.page + 1 }));
-                  setShouldFetch(true);
-                }}
-                disabled={paginationModel.page >= Math.ceil(totalRows / paginationModel.pageSize) - 1 || paginationModel.pageSize === -1}
-                title="Next Page"
-                sx={{
-                  '&.Mui-disabled': {
-                    opacity: 0.5,
-                  }
-                }}
-              >
-                <NavigateNextIcon fontSize="small" />
-              </Button>
-              <Button
-                onClick={() => {
-                  const lastPage = Math.ceil(totalRows / paginationModel.pageSize) - 1;
-                  setPaginationModel({ ...paginationModel, page: lastPage });
-                  setShouldFetch(true);
-                }}
-                disabled={paginationModel.page >= Math.ceil(totalRows / paginationModel.pageSize) - 1 || paginationModel.pageSize === -1}
-                title="Last Page"
-                sx={{
-                  '&.Mui-disabled': {
-                    opacity: 0.5,
-                  }
-                }}
-              >
-                <LastPageIcon fontSize="small" />
-              </Button>
-            </ButtonGroup>
-          </Box>
-        </Box>
-      </Stack>
-    );
-  };
-
   return (
     <Box sx={{ p: 2 }}>
       <Button
@@ -454,36 +259,12 @@ const Products = () => {
                     required
                   />
                 </Box>
-            
-              </Stack>
-
-              {/* Second Row */}
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                 <Box flex={1}>
                   <FormInput
-                    name="stock"
+                    name="totalStock"
                     label="Stock"
                     type='number'
-                    value={formData.stock.toString()}
-                    onChange={handleChange}
-                    required
-                  />
-                </Box>
-                <Box flex={1}>
-                  <FormInput
-                    name="rented"
-                    label="Rented"
-                    type='number'
-                    value={formData.rented.toString()}
-                    onChange={handleChange}
-                    required
-                  />
-                </Box>
-                <Box flex={1}>
-                  <FormInput
-                    name="loss"
-                    label="Loss"
-                    value={formData.loss.toString()}
+                    value={Number(formData.totalStock)}
                     onChange={handleChange}
                     required
                   />
@@ -538,13 +319,6 @@ const Products = () => {
           columns={columns}
           rowCount={totalRows}
           loading={loading}
-          paginationModel={paginationModel}
-          paginationMode="server"
-          pageSizeOptions={[5, 10, 25, 50, { value: -1, label: 'All' }]}
-          onPaginationModelChange={(newModel) => {
-            setPaginationModel(newModel);
-            setShouldFetch(true);
-          }}
           disableRowSelectionOnClick
           getRowId={(row) => row._id}
           sx={{
@@ -563,7 +337,6 @@ const Products = () => {
             },
           }}
           slots={{
-            pagination: CustomPagination,
             loadingOverlay: () => (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                 <CircularProgress color="primary" />

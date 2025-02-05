@@ -124,8 +124,7 @@ const modalStyle = {
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: '90%',
-  maxWidth: '1200px',
+  width: '100%',
   bgcolor: 'background.paper',
   boxShadow: 24,
   p: 4,
@@ -254,10 +253,12 @@ const Challan = () => {
   const handleSiteChange = (value: any) => {
     setFormData(prev => {
       const s = sites.find((s) => s.siteName == value)
+      const challanNUmber = s?.challanNumber.split('C') || ['S0', '-1'];
       return {
         ...prev,
-        siteName: s?.siteName||'',
-        siteAddress: s?.siteAddress || ''
+        siteName: s?.siteName || '',
+        siteAddress: s?.siteAddress || '',
+        challanNumber: `${challanNUmber[0]}C${Number(challanNUmber[1]) + 1}`
       };
     });
   };
@@ -270,14 +271,14 @@ const Challan = () => {
         [field]: value
       };
 
-    if (field == 'productName' ) {
-      const customerPrize = selectedCustomer?.prizefix?.find((p)=> p.productName == value && p.size == formData.products[index].size )
-      updatedProduct.rate = customerPrize?.rate;
-    }
-    if (field == 'size' ) {
-      const customerPrize = selectedCustomer?.prizefix?.find((p)=> p.size == value && p.productName == formData.products[index].productName )
-      updatedProduct.rate = customerPrize?.rate;
-    }
+      if (field == 'productName') {
+        const customerPrize = selectedCustomer?.prizefix?.find((p) => p.productName == value && p.size == formData.products[index].size)
+        updatedProduct.rate = customerPrize?.rate;
+      }
+      if (field == 'size') {
+        const customerPrize = selectedCustomer?.prizefix?.find((p) => p.size == value && p.productName == formData.products[index].productName)
+        updatedProduct.rate = customerPrize?.rate;
+      }
 
       // Immediately calculate amount when quantity or rate changes
       if (field === 'quantity' || field === 'rate') {
@@ -299,7 +300,7 @@ const Challan = () => {
         transportCharge,
         serviceCharge,
         damageCharge,
-        totalAmount: Number(baseAmount) + Number(transportCharge) +serviceCharge + damageCharge
+        totalAmount: Number(baseAmount) + Number(transportCharge) + serviceCharge + damageCharge
       };
     });
   };
@@ -404,23 +405,23 @@ const Challan = () => {
   }
   const handleExtraCharge = (field: keyof IChallan, value: any) => {
     const sanitizedValue = value.replace(/,/g, '');
-  
-    const numericValue =Number(sanitizedValue)
-  
+
+    const numericValue = Number(sanitizedValue)
+
     setFormData((prev) => {
       const updatedFormData: IChallan = { ...prev };
-  
+
       (updatedFormData[field] as number) = numericValue;
-  
+
       const prevAmount = Number(prev[field]) ?? 0;
       updatedFormData.totalAmount = (prev.totalAmount ?? 0) - prevAmount + numericValue;
-  
+
       return updatedFormData;
     });
   };
-  
-  
-  
+
+
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -867,9 +868,9 @@ const Challan = () => {
           renderValue={(value) => (value as string) || 'Select Product'}
           inputRef={(ref) => (productRefs.current[index] = ref)}
           sx={{
-            height: '55px',
+            height: '35px',
             '& .MuiSelect-root': {
-              height: '55px',
+              height: '35px',
             },
 
             '& .MuiOutlinedInput-root': {
@@ -919,9 +920,9 @@ const Challan = () => {
           displayEmpty
           renderValue={(value: unknown) => (value as string) || 'Select Size'}
           sx={{
-            height: '55px',
+            height: '35px',
             '& .MuiSelect-root': {
-              height: '55px',
+              height: '35px',
             },
             '& .MuiOutlinedInput-root': {
               borderRadius: '4px',
@@ -981,9 +982,9 @@ const Challan = () => {
           displayEmpty
           renderValue={(value) => (value as string) || 'Select Site'}
           sx={{
-            height: '55px',  // Set height to match other fields
+            height: '35px',
             '& .MuiSelect-root': {
-              height: '55px',  // Ensure the root select element has the correct height
+              height: '35px',
             },
 
             '& .MuiOutlinedInput-root': {
@@ -1084,7 +1085,7 @@ const Challan = () => {
 
   useEffect(() => {
     // Prevent scroll changing number inputs
-    const handleWheel = (event:Event) => {
+    const handleWheel = (event: Event) => {
       if ((document.activeElement as any)?.type === 'number') {
         event.preventDefault();
       }
@@ -1110,11 +1111,11 @@ const Challan = () => {
         customerId: customer._id || '',
         mobileNumber: customer.mobileNumber as string,
       };
-
-      // Check if customer.sites exists and has at least one site
       if (customer.sites?.length || 0 < 1) {
+        const challanNUmber =  customer?.sites?.[0]?.challanNumber.split('C') || ['S0', '-1'];
         updatedForm.siteName = customer?.sites?.[0].siteName || '';
         updatedForm.siteAddress = customer?.sites?.[0].siteAddress || '';
+        updatedForm.challanNumber =  `${challanNUmber[0]}C${Number(challanNUmber[1]) + 1}`
       }
 
       return updatedForm;
@@ -1135,36 +1136,199 @@ const Challan = () => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Button
-          variant="contained"
-          sx={{ bgcolor: 'var(--error-bg-dark)', color: 'white', mb: 2 }}
-          onClick={() => {
-            setIsEditMode(false);
-            setFormData({ ...initialFormData, type: "Return" });
-            setOpen(true);
-          }}
-        >
-          <ArrowBackIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          <FireTruckIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1, transform: 'scaleX(-1)' }} />
-          Add new Return Challan
-        </Button>
+      <>
+        <Box sx={{
+          p: 2,
+          display: 'flex',
+          gap: 2,
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexDirection: { xs: 'column', md: 'row' },
+          background: 'radial-gradient(circle at center, #f8f9fa 0%, #e9ecef 100%)'
+        }}>
+          {/* Delivery Challan Button */}
+          <Button
+            variant="contained"
+            sx={{
+              position: 'relative',
+              overflow: 'hidden',
+              p: 2,
+              minWidth: 280,
+              background: '#c3e1c5',
+              color: 'var(--success-color)',
+              border: '2px solid var(--success-color)',
+              borderRadius: '12px',
+              boxShadow: `
+          0 4px 6px rgba(0, 0, 0, 0.1),
+          inset 0 1px 2px rgba(255, 255, 255, 0.3),
+          0 0 12px rgba(var(--success-rgb), 0.2)
+        `,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: 'translateY(0) scale(0.98)',
+              '&:hover': {
+                background: '#c3e1c5',
+                transform: 'translateY(-2px) scale(1.02)',
+                boxShadow: `
+            0 6px 12px rgba(0, 0, 0, 0.15),
+            inset 0 2px 4px rgba(255, 255, 255, 0.4),
+            0 0 16px rgba(var(--success-rgb), 0.3)
+          `,
+              },
+              '&:before': {
+                content: '""',
+                position: 'absolute',
+                top: '-50%',
+                left: '-50%',
+                width: '200%',
+                height: '200%',
+                background: `
+            linear-gradient(
+              45deg,
+              transparent 25%,
+              rgba(255, 255, 255, 0.3) 25%,
+              rgba(255, 255, 255, 0.4) 50%,
+              transparent 50%,
+              transparent 75%,
+              rgba(255, 255, 255, 0.3) 75%,
+              transparent
+            )
+          `,
+                backgroundSize: '4px 4px',
+                opacity: 0.5,
+                animation: 'shine 3s infinite linear', // Always apply the shining effect
+                zIndex: 1
+              },
+              '&:after': {
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '10px',
+                border: '2px solid rgba(255, 255, 255, 0.2)',
+                zIndex: 1
+              }
+            }}
+            onClick={() => {
+              setIsEditMode(false);
+              setFormData(initialFormData);
+              setOpen(true);
+            }}
+          >
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              position: 'relative',
+              zIndex: 2,
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+            }}>
+              <ArrowBackIcon sx={{
+                display: { xs: 'none', md: 'flex' },
+                mr: 1,
+                filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1))'
+              }} />
+              <FireTruckIcon sx={{
+                display: { xs: 'none', md: 'flex' },
+                mr: 1,
+                transform: 'scaleX(-1)',
+                filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1))'
+              }} />
+              <Typography variant="button" sx={{ fontWeight: 700 }}>
+                Add new Delivery Challan
+              </Typography>
+            </Box>
+          </Button>
 
-        <Button
-          variant="contained"
-          sx={{ bgcolor: 'var(--success-color)', color: 'white', mb: 2 }}
-          onClick={() => {
-            setIsEditMode(false);
-            setFormData(initialFormData);
-            setOpen(true);
-          }}
-        >
-          <FireTruckIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          <ArrowForwardIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          Add new Delivery Challan
-        </Button>
-      </Box>
+          {/* Return Challan Button */}
+          <Button
+            variant="contained"
+            sx={{
+              position: 'relative',
+              overflow: 'hidden',
+              p: 2,
+              minWidth: 280,
+              background: '#f3bfbc',
+              color: 'var(--error-color)',
+              border: '2px solid var(--error-color)',
+              borderRadius: '12px',
+              boxShadow: `
+          0 4px 6px rgba(0, 0, 0, 0.1),
+          inset 0 1px 2px rgba(255, 255, 255, 0.3),
+          0 0 12px rgba(var(--error-rgb), 0.2)
+        `,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: 'translateY(0) scale(0.98)',
+              '&:hover': {
+                background: '#f3bfbc',
+                transform: 'translateY(-2px) scale(1.02)',
+                boxShadow: `
+            0 6px 12px rgba(0, 0, 0, 0.15),
+            inset 0 2px 4px rgba(255, 255, 255, 0.4),
+            0 0 16px rgba(var(--error-rgb), 0.3)
+          `,
+              },
+              '&:before': {
+                content: '""',
+                position: 'absolute',
+                top: '-50%',
+                left: '-50%',
+                width: '200%',
+                height: '200%',
+                background: `
+            linear-gradient(
+              45deg,
+              transparent 25%,
+              rgba(255, 255, 255, 0.3) 25%,
+              rgba(255, 255, 255, 0.4) 50%,
+              transparent 50%,
+              transparent 75%,
+              rgba(255, 255, 255, 0.3) 75%,
+              transparent
+            )
+          `,
+                backgroundSize: '4px 4px',
+                opacity: 0.5,
+                animation: 'shine 3s infinite linear', // Always apply the shining effect
+                zIndex: 1
+              },
+              '&:after': {
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '10px',
+                border: '2px solid rgba(255, 255, 255, 0.2)',
+                zIndex: 1
+              }
+            }}
+            onClick={() => {
+              setIsEditMode(false);
+              setFormData({ ...initialFormData, type: "Return" });
+              setOpen(true);
+            }}
+          >
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              position: 'relative',
+              zIndex: 2,
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+            }}>
+              <FireTruckIcon sx={{
+                display: { xs: 'none', md: 'flex' },
+                mr: 1,
+                filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1))'
+              }} />
+              <ArrowForwardIcon sx={{
+                display: { xs: 'none', md: 'flex' },
+                mr: 1,
+                filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1))'
+              }} />
+              <Typography variant="button" sx={{ fontWeight: 700 }}>
+                Add new Return Challan
+              </Typography>
+            </Box>
+          </Button>
+        </Box>
 
+      </>
       <Modal
         open={open}
         onClose={handleClose}
@@ -1202,9 +1366,9 @@ const Challan = () => {
                     variant="outlined"
                     size="small"
                     sx={{
-                      height: '55px',
+                      height: '35px',
                       '& .MuiInputBase-root': {
-                        height: '55px',
+                        height: '35px',
                       },
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '4px',
@@ -1267,6 +1431,7 @@ const Challan = () => {
                   <FormInput
                     name="challanNumber"
                     label="Challan Number"
+                    disabled={true}
                     value={formData.challanNumber}
                     onChange={handleChange}
                     required
@@ -1313,7 +1478,7 @@ const Challan = () => {
                 </Box>
                 <Box flex={1}>
                   <FormInput
-                  min={0}
+                    min={0}
                     name="damageCharge"
                     label="Damage Charge"
                     value={formData.damageCharge}
@@ -1321,10 +1486,6 @@ const Challan = () => {
                     type='number'
                   />
                 </Box>
-              </Stack>
-
-              {/* 3 Row */}
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                 <Box flex={1}>
                   <FormInput
                     name="loading"
@@ -1514,14 +1675,36 @@ const Challan = () => {
           loading={loading}
           disableRowSelectionOnClick
           getRowId={(row: any) => row._id}
-          hideFooterPagination={true}
+          hideFooter={true}
           sx={{
+            color: 'var(primary-color)',
             border: 0,
+            height: '80vh',
+            width: '100%',
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#f5f5f5',
+              backgroundColor: 'var(--primary-header-color)',
+              color: '#333',
+              '&:hover': {
+                backgroundColor: '#fff',
+                color: '#000',
+              },
+            },
+            '& .MuiDataGrid-filterCell': {
+              backgroundColor: 'var(--filter-background-color)',
+              color: '#333',
+              '&:hover': {
+                backgroundColor: '#fff',
+                color: '#000',
+              },
             },
             '& .MuiDataGrid-cell:focus': {
               outline: 'none',
+            },
+            '& .MuiDataGrid-toolbar': {
+              backgroundColor: 'var(--toolbar-background-color)',
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              overflowY: 'auto', // Enable vertical scrolling
             },
           }}
           slots={{
@@ -1541,6 +1724,8 @@ const Challan = () => {
           disableDensitySelector={true}
           disableColumnSelector={false}
         />
+
+
       </Paper>
     </Box >
   );

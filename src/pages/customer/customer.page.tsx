@@ -49,6 +49,7 @@ import { styled } from '@mui/material/styles';
 import PhotoIcon from '@mui/icons-material/Photo';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
+import AddAPhotoIcon from '@mui/icons-material/AddAPhoto';
 
 declare module 'jspdf' {
     interface jsPDF {
@@ -64,7 +65,8 @@ const initialProduct: IProducts = {
 
 const initialSite: ISite = {
     siteName: '',
-    siteAddress: ''
+    siteAddress: '',
+    challanNumber: 'S1C1'
 };
 
 interface ICutomer {
@@ -108,7 +110,8 @@ const initialFormData: ICutomer = {
     }],
     sites: [{
         siteName: '',
-        siteAddress: ''
+        siteAddress: '',
+        challanNumber: 'S1C0',
     }],
 };
 
@@ -117,8 +120,7 @@ const modalStyle = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: '90%',
-    maxWidth: '1200px',
+    width: '100%',
     bgcolor: 'background.paper',
     boxShadow: 24,
     p: 4,
@@ -792,43 +794,43 @@ const Customer = () => {
                     <Box sx={{ mb: 3 }}>
 
                         <Grid container spacing={2}>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">GST Number: </Typography>
                                 <Typography>{selectedCustomer.GSTnumber}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Customer Name: </Typography>
                                 <Typography>{selectedCustomer.customerName}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Mobile Number: </Typography>
                                 <Typography>{selectedCustomer.mobileNumber}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Rcedent Address: </Typography>
                                 <Typography>{selectedCustomer.residentAddress}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Pan Card Number: </Typography>
                                 <Typography>{selectedCustomer.pancardNo}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Aadhar Card Number: </Typography>
                                 <Typography>{selectedCustomer.aadharNo}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Partner Name: </Typography>
                                 <Typography>{selectedCustomer.partnerName}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Partner Number: </Typography>
                                 <Typography>{selectedCustomer.partnerMobileNumber}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Reference : </Typography>
                                 <Typography>{selectedCustomer.reference}</Typography>
                             </Grid>
-                            <Grid item xs={6} sx={{display: 'flex'}}>
+                            <Grid item xs={6} sx={{ display: 'flex' }}>
                                 <Typography variant="body2" color="var(--primary-color)">Reference Number: </Typography>
                                 <Typography>{selectedCustomer.referenceMobileNumber}</Typography>
                             </Grid>
@@ -1015,10 +1017,16 @@ const Customer = () => {
 
     // Add site handling functions
     const addSite = () => {
-        setFormData(prev => ({
-            ...prev,
-            sites: Array.isArray(prev.sites) ? [...prev.sites, initialSite] : [initialSite]
-        }));
+        setFormData(prev => {
+            const newSite = {
+                ...initialSite,
+                challanNumber : `S${ Array.isArray(prev.sites) ? prev.sites.length : 0}C0`
+            }
+            return {
+                ...prev,
+                sites: Array.isArray(prev.sites) ? [...prev.sites, newSite] : [newSite]
+            }    
+        });
     };
 
     const removeSite = (index: number) => {
@@ -1043,38 +1051,6 @@ const Customer = () => {
                 sites: newSites
             };
         });
-    };
-
-    // Add this configuration object
-    const filterOperators = {
-        string: [
-            {
-                label: 'contains',
-                value: 'contains',
-                getApplyFilterFn: (filterItem: GridFilterItem) => {
-                    if (!filterItem.value) return null;
-                    return ({ value }: { value: any }) => {
-                        const cellValue = (value?.toString() || '').toLowerCase();
-                        const searchValue = (filterItem.value?.toString() || '').toLowerCase();
-                        return cellValue.includes(searchValue);
-                    };
-                },
-            },
-        ],
-        number: [
-            {
-                label: 'contains',
-                value: 'contains',
-                getApplyFilterFn: (filterItem: GridFilterItem) => {
-                    if (!filterItem.value) return null;
-                    return ({ value }: { value: any }) => {
-                        const cellValue = (value?.toString() || '').toLowerCase();
-                        const searchValue = (filterItem.value?.toString() || '').toLowerCase();
-                        return cellValue.includes(searchValue);
-                    };
-                },
-            },
-        ],
     };
 
     // Add photo upload functionality
@@ -1263,10 +1239,10 @@ const Customer = () => {
                             </Stack>
 
                             {/* 5 Row */}
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
                                 <PhotoUploadButton
                                     field="aadharPhoto"
-                                    icon={<CreditCardIcon />}
+                                    icon={<AddAPhotoIcon />}
                                     label="Aadhar Photo"
                                 />
                                 <PhotoUploadButton
@@ -1280,73 +1256,6 @@ const Customer = () => {
                                     label="Customer Photo"
                                 />
                             </Stack>
-
-                            {/* Products Section */}
-                            <Paper sx={{ p: 3, mt: 3 }}>
-                                <Typography variant="h6" sx={{ mb: 3, color: 'primary.main' }}>
-                                    Products
-                                </Typography>
-                                <Stack spacing={2}>
-                                    {formData.prizefix?.map((product, index) => (
-                                        <Paper
-                                            key={index}
-                                            elevation={0}
-                                            sx={{
-                                                p: 2,
-                                                border: '1px solid',
-                                                borderColor: 'divider',
-                                                borderRadius: 1,
-                                                '&:hover': {
-                                                    boxShadow: 1
-                                                }
-                                            }}
-                                        >
-                                            <Stack
-                                                direction={{ xs: 'column', md: 'row' }}
-                                                spacing={2}
-                                                alignItems="center"
-                                                position="relative"
-                                            >
-                                                <Box flex={2}>
-                                                    {productInput(index, product)}
-                                                </Box>
-                                                <Box flex={1}>
-                                                    <FormInput
-                                                        name={`products.${index}.rate`}
-                                                        label="Rate"
-                                                        type="number"
-                                                        value={product.rate?.toString()}
-                                                        onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
-                                                        required
-                                                    />
-                                                </Box>
-                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-                                                    <IconButton
-                                                        onClick={() => removeProduct(index)}
-                                                        color="error"
-                                                        size="small"
-                                                        sx={{
-                                                            '&:hover': {
-                                                                backgroundColor: 'error.lighter'
-                                                            }
-                                                        }}
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Box>
-                                            </Stack>
-                                        </Paper>
-                                    ))}
-                                </Stack>
-                                <Button
-                                    onClick={addProduct}
-                                    startIcon={<AddIcon />}
-                                    variant="outlined"
-                                    sx={{ mt: 2 }}
-                                >
-                                    Add Product
-                                </Button>
-                            </Paper>
 
                             {/* Sites Section */}
                             <Paper sx={{ p: 3, mt: 3 }}>
@@ -1392,9 +1301,96 @@ const Customer = () => {
                                                         required
                                                     />
                                                 </Box>
-                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',justifyItems: "center" }}>
+                                                    {index == formData.sites.length - 1 ? <Button
+                                                        onClick={addSite}
+                                                        startIcon={<AddIcon />}
+                                                        variant="outlined"
+                                                        sx={{ 
+                                                            color: 'var(--success-color)',
+                                                            border : '2px solid var(--success-color)',
+                                                            padding : '4px'
+                                                         }}
+                                                    >
+                                                        Add Site
+                                                    </Button> : ""}
                                                     <IconButton
                                                         onClick={() => removeSite(index)}
+                                                        color="error"
+                                                        size="small"
+                                                        sx={{
+                                                            marginLeft : "3px",
+                                                            '&:hover': {
+                                                                backgroundColor: 'error.lighter'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
+                                            </Stack>
+                                        </Paper>
+                                    ))}
+                                </Stack>
+
+                            </Paper>
+
+                            {/* Products Section */}
+                            <Paper sx={{ p: 3, mt: 3 }}>
+                                <Typography variant="h6" sx={{ mb: 3, color: 'primary.main' }}>
+                                    Products
+                                </Typography>
+                                <Stack spacing={2}>
+                                    {formData.prizefix?.map((product, index) => (
+                                        <Paper
+                                            key={index}
+                                            elevation={0}
+                                            sx={{
+                                                p: 2,
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                borderRadius: 1,
+                                                '&:hover': {
+                                                    boxShadow: 1
+                                                }
+                                            }}
+                                        >
+                                            <Stack
+                                                direction={{ xs: 'column', md: 'row' }}
+                                                spacing={2}
+                                                alignItems="center"
+                                                position="relative"
+                                            >
+                                                <Box flex={2}>
+                                                    {productInput(index, product)}
+                                                </Box>
+                                                <Box flex={1}>
+                                                    <FormInput
+                                                        name={`products.${index}.rate`}
+                                                        label="Rate"
+                                                        type="number"
+                                                        value={product.rate?.toString()}
+                                                        onChange={(e) => handleProductChange(index, 'rate', Number(e.target.value))}
+                                                        required
+                                                    />
+                                                </Box>
+                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+                                                    {index == formData.prizefix.length-1?
+                                                    <Button
+                                                    onClick={addProduct}
+                                                    startIcon={<AddIcon />}
+                                                    variant="outlined"
+                                                    sx={{ 
+                                                        color: 'var(--success-color)',
+                                                        border : '2px solid var(--success-color)',
+                                                        padding : '4px'
+                                                     }}
+                                                >
+                                                    Add Product
+                                                </Button> : ''
+                                                }
+                                                    <IconButton
+                                                        onClick={() => removeProduct(index)}
                                                         color="error"
                                                         size="small"
                                                         sx={{
@@ -1410,14 +1406,7 @@ const Customer = () => {
                                         </Paper>
                                     ))}
                                 </Stack>
-                                <Button
-                                    onClick={addSite}
-                                    startIcon={<AddIcon />}
-                                    variant="outlined"
-                                    sx={{ mt: 2 }}
-                                >
-                                    Add Site
-                                </Button>
+                                
                             </Paper>
 
                             {/* Action Buttons */}

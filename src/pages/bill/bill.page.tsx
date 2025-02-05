@@ -130,8 +130,7 @@ const modalStyle = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: '90%',
-    maxWidth: '1200px',
+    width: '100%',
     bgcolor: 'background.paper',
     boxShadow: 24,
     p: 4,
@@ -611,9 +610,9 @@ const Bill = () => {
                                 size="small"
                                 sx={{
                                     textAlign: 'justify',
-                                    height: '55px',
+                                    height: '35px',
                                     '& .MuiInputBase-root': {
-                                        height: '55px',
+                                        height: '35px',
                                     },
                                     '& .MuiOutlinedInput-root': {
                                         borderRadius: '4px',
@@ -669,7 +668,7 @@ const Bill = () => {
                                 disabled={!formData.customerName}
                                 displayEmpty
                                 renderValue={(value: unknown) => (value as string) || 'Select Site'}
-                                sx={{ minWidth: { xs: '100%', height: '55px', md: 150, textAlign: 'justify' } }}
+                                sx={{ minWidth: { xs: '100%', height: '35px', md: 150, textAlign: 'justify' } }}
                             >
                                 <MenuItem disabled value="" sx={{ textAlign: 'justify' }}>
                                     Select Site
@@ -882,7 +881,7 @@ const Bill = () => {
                 : ''
             }
             <Box>
-                {bill?.map((billMonth: any, idx: any) => (
+                {/* {bill?.map((billMonth: any, idx: any) => (
                     <Paper sx={{ width: '100%' }} key={idx}>
                         <CommonDataTable
                             loading={false}
@@ -894,8 +893,19 @@ const Bill = () => {
                             }}
                         />
                     </Paper>
-                ))}
-
+                ))} */}
+// In your Bill component's return statement:
+{billData?.monthData?.map((monthEntry: any) => (
+  <CommonDataTable
+    key={`${monthEntry.year}-${monthEntry.month}`}
+    rows={{
+      products: monthEntry.products,
+      year: monthEntry.year,
+      month: monthEntry.month
+    }}
+    loading={false}
+  />
+))}
                 {/* {
         // Loop over each month in the bill array and display a DataGrid for each one
         bill?.map((billMonth: any, idx: any) => (

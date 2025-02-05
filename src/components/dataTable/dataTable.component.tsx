@@ -46,6 +46,10 @@ interface CommonDataTableProps {
   loading: boolean;
 }
 
+
+
+
+
 const CommonDataTable: React.FC<any> = ({
   rows,
   loading,

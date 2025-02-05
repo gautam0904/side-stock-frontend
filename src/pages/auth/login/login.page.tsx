@@ -71,6 +71,7 @@ const Login = () => {
                 required
                 autoComplete="username"
                 autoFocus
+                className='mb-4'
                 fullWidth
               />
               <FormInput
@@ -81,10 +82,11 @@ const Login = () => {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 validate={validateRequiredFields}
                 required
+                className='mb-4'
                 autoComplete="current-password"
                 fullWidth
               />
-              <Link to="/auth/signup">create account</Link>
+              <Link to="/auth/signup" className='mb-4'>create account</Link>
               <Button
                 type="submit"
                 fullWidth
