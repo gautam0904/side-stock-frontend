@@ -45,7 +45,7 @@ const Stocks = () => {
         { field: 'stock', headerName: 'In Stock', width: 150, sortable: false, filterable: false, disableColumnMenu: true },
         { field: 'rented', headerName: 'Rented', width: 150, sortable: false, filterable: false, disableColumnMenu: true },
         { field: 'loss', headerName: 'Loss', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
-        { field: 'total', headerName: 'Total', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
+        { field: 'totalStock', headerName: 'Total', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
       ];
 
   const fetchProducts = useCallback(async () => {
@@ -66,7 +66,8 @@ const Stocks = () => {
         ...purchase,
         id: purchase._id,
         no: index + 1,
-        total: Number(purchase.stock) + Number(purchase.rented) + Number(purchase.loss)
+        total: Number(purchase.stock), 
+        stock: Number(purchase.stock) - Number(purchase.rented) - Number(purchase.loss)
       }));
 
       setProducts(ProductsWithNumbers);

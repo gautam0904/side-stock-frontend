@@ -9,11 +9,9 @@ import { BarChart, PieChart } from '@mui/x-charts';
 import { productService } from '../../api/product.service';
 import { GstContext } from '../../contexts/gst.contexts';
 import ReceiptIcon from '@mui/icons-material/Receipt';
-import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import ProductionQuantityLimitsIcon from '@mui/icons-material/ProductionQuantityLimits';
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
@@ -50,7 +48,7 @@ const Dashboard: React.FC = () => {
         const totalStock = products.reduce((sum: any, p: any) => sum + p.stock, 0);
         const totalRented = products.reduce((sum: any, p: any) => sum + p.rented, 0);
         const totalLoss = products.reduce((sum: any, p: any) => sum + p.loss, 0);
-        const totalItems = totalStock + totalRented + totalLoss;
+        const totalItems = products.reduce((sum: any, p: any) => Number(sum) + Number(p.totalStock), 0);
 
         // Calculate statistics
         const stats = {
@@ -94,14 +92,6 @@ const Dashboard: React.FC = () => {
 
   const statsCards = [
     { 
-      title: 'Types of products', 
-      value: productStats.totalProducts, 
-      subtitle: 'Unique products',
-      icon: BorderClearIcon, 
-      color: '#7b4eff', 
-      bgColor: '#9c68ff57' 
-    },
-    { 
       title: 'Total products', 
       value: productStats.totalItems,
       subtitle: 'Total of all items',
@@ -118,14 +108,6 @@ const Dashboard: React.FC = () => {
       bgColor: '#67cb6f63' 
     },
     { 
-      title: 'Low Stock', 
-      value: productStats.lowStock,
-      subtitle: 'Less than 10 items',
-      icon: WarningIcon, 
-      color: '#ff9800', 
-      bgColor: '#fff3e0' 
-    },
-    { 
       title: 'Lost Items', 
       value: productStats.lostItems,
       subtitle: 'Total Losses',
@@ -140,6 +122,22 @@ const Dashboard: React.FC = () => {
       icon: ApartmentIcon, 
       color: '#17500b', 
       bgColor: '#bdff4054' 
+    }, 
+    { 
+      title: 'Low Stock', 
+      value: productStats.lowStock,
+      subtitle: 'Less than 10 items',
+      icon: WarningIcon, 
+      color: '#ff9800', 
+      bgColor: '#fff3e0' 
+    },
+    { 
+      title: 'Types of products', 
+      value: productStats.totalProducts, 
+      subtitle: 'Unique products',
+      icon: BorderClearIcon, 
+      color: '#7b4eff', 
+      bgColor: '#9c68ff57' 
     },
   ];
 
@@ -279,7 +277,7 @@ const Dashboard: React.FC = () => {
               tooltip={{ trigger: 'item' }}
               legend={{
                 hidden: false,
-                position: { vertical: 'top', horizontal: 'right' },
+                position: { vertical: 'top', horizontal: 'left' },
                 padding: 20,
               }}
             />

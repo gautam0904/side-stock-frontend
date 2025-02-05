@@ -40,6 +40,10 @@
     transform: rotate(360deg);
   }
 }
+@keyframes shine {
+  from { transform: translate(0%, 0%); }
+  to { transform: translate(50%, 50%); }
+}
 
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {

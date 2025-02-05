@@ -70,10 +70,12 @@ function signup() {
                                 required
                                 autoComplete="username"
                                 autoFocus
+                                className='mb-4'
                                 fullWidth
                             />
                             <FormInput
                                 name='password'
+                                className='mb-4'
                                 label='Password'
                                 type='password'
                                 value={password}
@@ -88,7 +90,7 @@ function signup() {
                                 type="submit"
                                 fullWidth
                                 variant="contained"
-                                sx={{ mt: 3, mb: 2 }}
+                                sx={{ mt: 3, mb: 4 }}
                             >
                                 Sign up
                             </Button>
