@@ -1130,7 +1130,7 @@ const Customer = () => {
             >
                 <Box sx={modalStyle}>
                     <Typography id="modal-title" variant="h6" component="h2" sx={{ mb: 3 }}>
-                        {isEditMode ? 'Edit Purchase' : 'Add New Purchase'}
+                        {isEditMode ? 'Edit Customer' : 'Add New Customer'}
                     </Typography>
 
                     <Form onSubmit={handleSubmit}>
