@@ -414,6 +414,7 @@ import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import dayjs from 'dayjs';
+import FormInput from '../../components/formInput/formInput.component';
 
 interface IProducts {
   no?: number;
@@ -451,14 +452,14 @@ const modalStyle = {
     overflowY: 'auto'
   } as const;
 
-const FormInput = forwardRef<HTMLInputElement, any>((props, ref) => (
-  <TextField
-    {...props}
-    inputRef={ref}
-    variant="outlined"
-    fullWidth
-  />
-));
+// const FormInput = forwardRef<HTMLInputElement, any>((props, ref) => (
+//   <TextField
+//     {...props}
+//     inputRef={ref}
+//     variant="outlined"
+//     fullWidth
+//   />
+// ));
 
 const Products = () => {
   const [open, setOpen] = useState(false);
@@ -643,6 +644,7 @@ const Products = () => {
           <form onSubmit={handleSubmit}>
             <Stack spacing={2}>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <Box flex={1}>
                 <FormInput
                   name="productName"
                   label="Product Name"
@@ -650,14 +652,19 @@ const Products = () => {
                   onChange={handleChange}
                   required
                   ref={firstInputRef}
+                  fullWidth
                 />
+                </Box>
+                <Box flex={1}>
                 <FormInput
-                  name="size"
+                  name="size" 
                   label="Size"
                   value={formData.size}
                   onChange={handleChange}
                   required
                 />
+                </Box>
+                <Box flex={1}>
                 <FormInput
                   name="totalStock"
                   label="Stock"
@@ -666,6 +673,7 @@ const Products = () => {
                   onChange={handleChange}
                   required
                 />
+                </Box>
               </Stack>
 
               <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
