@@ -168,6 +168,8 @@ const Customer = () => {
     const gridRef = useRef<any>(null);
     const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
     const [productOptions, setProductOptions] = useState<Array<{ name: string, sizes: string[] }>>([]);
+    const addButtonRef = useRef<HTMLButtonElement | null>(null);
+
 
     const columns: GridColDef[] = [
         {
@@ -314,39 +316,66 @@ const Customer = () => {
         setFormData(initialFormData);
     };
 
+    // const fetchGSTDetails = async (gstNumber: string) => {
+    //     try {
+    //         // Using a different free GST API
+    //         const response = await fetch(`https://api.gstincheck.co.in/v1/verify/${gstNumber}`, {
+    //             method: 'GET',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 'apikey': '4ff236814d3317fdd0479ca80b1b4cd4'
+    //             }
+    //         });
+
+    //         if (!response.ok) {
+    //             throw new Error('Failed to fetch GST details');
+    //         }
+
+    //         const data = await response.json();
+
+    //         // Check if the API call was successful
+    //         if (data && data.success) {
+    //             return {
+    //                 legalName: data.data.lgnm || '',
+    //                 tradeName: data.data.tradeNam || '',
+    //                 status: data.data.sts || ''
+    //             };
+    //         } else {
+    //             throw new Error(data.message || 'Failed to fetch GST details');
+    //         }
+    //     } catch (error) {
+    //         console.error('Error fetching GST details:', error);
+    //         return null;
+    //     }
+    // };
+
+
     const fetchGSTDetails = async (gstNumber: string) => {
         try {
-            // Using a different free GST API
-            const response = await fetch(`https://api.gstincheck.co.in/v1/verify/${gstNumber}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': '4ff236814d3317fdd0479ca80b1b4cd4'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch GST details');
+            const response = await fetch(`/api/gst-proxy?gstNumber=${gstNumber}`);
+    
+            // Check if response is JSON (based on the 'Content-Type' header)
+            const contentType = response.headers.get('Content-Type');
+            if (!response.ok || (contentType && !contentType.includes('application/json'))) {
+                throw new Error('Expected JSON response, but got something else');
             }
-
+    
             const data = await response.json();
-
-            // Check if the API call was successful
-            if (data && data.success) {
+    
+            if (data?.success) {
                 return {
                     legalName: data.data.lgnm || '',
                     tradeName: data.data.tradeNam || '',
                     status: data.data.sts || ''
                 };
-            } else {
-                throw new Error(data.message || 'Failed to fetch GST details');
             }
+            throw new Error(data.message || 'Failed to fetch GST details');
         } catch (error) {
             console.error('Error fetching GST details:', error);
             return null;
         }
     };
-
+   
     const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
 
@@ -1107,9 +1136,19 @@ const Customer = () => {
         </Box>
     );
 
+    useEffect(() => {
+        if (open && addButtonRef.current) {
+            // Add a small delay to ensure the button is rendered before focusing
+            setTimeout(() => {
+                addButtonRef.current?.focus();
+            }, 100); // Adjust the delay as needed (100ms here)
+        }
+    }, [open]);
+
     return (
         <Box sx={{ p: 2 }}>
             <Button
+                ref={addButtonRef}
                 fullWidth
                 variant="contained"
                 sx={{ bgcolor: '#7b4eff', color: 'white', mb: 2 }}
@@ -1118,6 +1157,7 @@ const Customer = () => {
                     setFormData(initialFormData);
                     setOpen(true);
                 }}
+                autoFocus 
             >
                 <PersonAddAltIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
                 Add new Customer
@@ -1130,24 +1170,14 @@ const Customer = () => {
             >
                 <Box sx={modalStyle}>
                     <Typography id="modal-title" variant="h6" component="h2" sx={{ mb: 3 }}>
-                        {isEditMode ? 'Edit Purchase' : 'Add New Purchase'}
+                        {isEditMode ? 'Edit Customer' : 'Add New Customer'}
                     </Typography>
 
                     <Form onSubmit={handleSubmit}>
                         <Stack spacing={2}>
                             {/* First Row */}
                             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="GSTnumber"
-                                        label="GST Number"
-                                        value={formData.GSTnumber}
-                                        onChange={handleChange}
-                                        validate={validateGST}
-                                        required
-                                    />
-                                </Box>
-                                <Box flex={1}>
+                            <Box flex={1}>
                                     <FormInput
                                         name="customerName"
                                         label="Customer Name"
@@ -1164,8 +1194,19 @@ const Customer = () => {
                                         onChange={handleChange}
                                         validate={validateMobile}
                                         type="tel"
+                                        required
                                     />
                                 </Box>
+                                <Box flex={1}>
+                                    <FormInput
+                                        name="GSTnumber"
+                                        label="GST Number"
+                                        value={formData.GSTnumber}
+                                        onChange={handleChange}
+                                        validate={validateGST}
+                                    />
+                                </Box>
+                                
                             </Stack>
 
                             {/* Second Row */}
@@ -1194,7 +1235,6 @@ const Customer = () => {
                                         label="Resident Address"
                                         value={formData.residentAddress}
                                         onChange={handleChange}
-                                        required
                                     />
                                 </Box>
                             </Stack>
@@ -1207,7 +1247,6 @@ const Customer = () => {
                                         label="Reference"
                                         value={formData.reference}
                                         onChange={handleChange}
-                                        required
                                     />
                                 </Box>
                                 <Box flex={1}>
