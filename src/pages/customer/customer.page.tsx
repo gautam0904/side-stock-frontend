@@ -175,8 +175,8 @@ const Customer = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [customers, setCustomers] = useState<ICutomer[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<ICutomer | null>(null);
-    const inputRef = useRef<HTMLInputElement | null>(null); 
-    const location1 = useLocation(); 
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const location1 = useLocation();
     const [products, setProducts] = useState<IProducts[] | null>(null);
 
 
@@ -732,7 +732,7 @@ const Customer = () => {
         const fetchProducts = async () => {
             try {
                 const response = await productService.getAllProducts();
-               setProducts(response.data.products);
+                setProducts(response.data.products);
                 const groupedProducts = response.data.products.reduce((acc: any[], product: any) => {
                     const existing = acc.find(p => p.name === product.productName);
                     if (existing) {
@@ -976,15 +976,16 @@ const Customer = () => {
                             <MenuItem
                                 key={size}
                                 value={size}
-                                onClick={()=>{
+                                onClick={() => {
                                     setFormData(prev => {
                                         const value = products?.find(p => p.productName == product.productName && p.size === size)?.rate
                                         return {
-                                        ...prev,
-                                        prizefix: prev.prizefix.map((item, i) =>
-                                            i === index ? { ...item, rate: value } : item
-                                        )
-                                    }});
+                                            ...prev,
+                                            prizefix: prev.prizefix.map((item, i) =>
+                                                i === index ? { ...item, rate: value } : item
+                                            )
+                                        }
+                                    });
                                 }}
                                 sx={{
                                     '&:hover': {
@@ -1094,53 +1095,53 @@ const Customer = () => {
 
     useEffect(() => {
         if (open && addButtonRef.current) {
-          
+
             addButtonRef.current?.focus();
         }
-      }, [ location.pathname]);
+    }, [location.pathname]);
 
     const handleCustomerSearchChange = (e: any) => {
         const query = e.target.value;
         setSearchQuery(query);
         fetchCustomerss(query);
-      };
+    };
 
-      const fetchCustomerss = debounce(async (query) => {
-          if (query) {
+    const fetchCustomerss = debounce(async (query) => {
+        if (query) {
             try {
-              const response = await customerService.getCustomerByName(query);
-              const data = await response.data.customers;
-              setCustomers(data);
+                const response = await customerService.getCustomerByName(query);
+                const data = await response.data.customers;
+                setCustomers(data);
             } catch (error) {
-              console.error('Error fetching customers:', error);
+                console.error('Error fetching customers:', error);
             }
-          } else {
+        } else {
             setCustomers([]);
-          }
-        }, 500);
+        }
+    }, 500);
 
-          const handleCustomerSelect = (customer: ICutomer) => {
-            setSelectedCustomer(customer);
-            setSearchQuery(customer.customerName as string); // Optionally, set the search input to the selected customer name
-            setCustomers([]);
-        
-            setFormData((prev) => {
-        
-              const updatedForm = {
+    const handleCustomerSelect = (customer: ICutomer) => {
+        setSelectedCustomer(customer);
+        setSearchQuery(customer.customerName as string); // Optionally, set the search input to the selected customer name
+        setCustomers([]);
+
+        setFormData((prev) => {
+
+            const updatedForm = {
                 ...prev,
                 customerName: customer.customerName as string,
                 customerId: customer._id || '',
                 mobileNumber: customer.mobileNumber as string,
-              };
-              if (customer.sites?.length || 0 < 2) {
-                const challanNUmber =  customer?.sites?.[0]?.challanNumber.split('C') || ['S0', '-1'];
+            };
+            if (customer.sites?.length || 0 < 2) {
+                const challanNUmber = customer?.sites?.[0]?.challanNumber.split('C') || ['S0', '-1'];
                 updatedForm.sites[0].siteName = customer?.sites?.[0].siteName || '';
                 updatedForm.sites[0].siteAddress = customer?.sites?.[0].siteAddress || '';
-              }
-        
-              return updatedForm;
-            });
-          };
+            }
+
+            return updatedForm;
+        });
+    };
 
     return (
         <Box sx={{ p: 2 }}>
