@@ -168,6 +168,8 @@ const Customer = () => {
     const gridRef = useRef<any>(null);
     const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
     const [productOptions, setProductOptions] = useState<Array<{ name: string, sizes: string[] }>>([]);
+    const addButtonRef = useRef<HTMLButtonElement | null>(null);
+
 
     const columns: GridColDef[] = [
         {
@@ -1134,9 +1136,19 @@ const Customer = () => {
         </Box>
     );
 
+    useEffect(() => {
+        if (open && addButtonRef.current) {
+            // Add a small delay to ensure the button is rendered before focusing
+            setTimeout(() => {
+                addButtonRef.current?.focus();
+            }, 100); // Adjust the delay as needed (100ms here)
+        }
+    }, [open]);
+
     return (
         <Box sx={{ p: 2 }}>
             <Button
+                ref={addButtonRef}
                 fullWidth
                 variant="contained"
                 sx={{ bgcolor: '#7b4eff', color: 'white', mb: 2 }}
@@ -1145,6 +1157,7 @@ const Customer = () => {
                     setFormData(initialFormData);
                     setOpen(true);
                 }}
+                autoFocus 
             >
                 <PersonAddAltIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
                 Add new Customer
@@ -1164,16 +1177,7 @@ const Customer = () => {
                         <Stack spacing={2}>
                             {/* First Row */}
                             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <Box flex={1}>
-                                    <FormInput
-                                        name="GSTnumber"
-                                        label="GST Number"
-                                        value={formData.GSTnumber}
-                                        onChange={handleChange}
-                                        validate={validateGST}
-                                    />
-                                </Box>
-                                <Box flex={1}>
+                            <Box flex={1}>
                                     <FormInput
                                         name="customerName"
                                         label="Customer Name"
@@ -1193,6 +1197,16 @@ const Customer = () => {
                                         required
                                     />
                                 </Box>
+                                <Box flex={1}>
+                                    <FormInput
+                                        name="GSTnumber"
+                                        label="GST Number"
+                                        value={formData.GSTnumber}
+                                        onChange={handleChange}
+                                        validate={validateGST}
+                                    />
+                                </Box>
+                                
                             </Stack>
 
                             {/* Second Row */}
