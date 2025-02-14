@@ -25,7 +25,9 @@ import {
     TableHead,
     TableRow,
     TableContainer,
-    Grid
+    Grid,
+    TextField,
+    debounce
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridFilterModel, GridLogicOperator, GridFilterItem } from '@mui/x-data-grid';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
@@ -50,6 +52,7 @@ import PhotoIcon from '@mui/icons-material/Photo';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
 import AddAPhotoIcon from '@mui/icons-material/AddAPhoto';
+import { useLocation } from 'react-router-dom';
 
 declare module 'jspdf' {
     interface jsPDF {
@@ -169,6 +172,13 @@ const Customer = () => {
     const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
     const [productOptions, setProductOptions] = useState<Array<{ name: string, sizes: string[] }>>([]);
     const addButtonRef = useRef<HTMLButtonElement | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [customers, setCustomers] = useState<ICutomer[]>([]);
+    const [selectedCustomer, setSelectedCustomer] = useState<ICutomer | null>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const location1 = useLocation();
+    const [products, setProducts] = useState<IProducts[] | null>(null);
+
 
 
     const columns: GridColDef[] = [
@@ -226,33 +236,6 @@ const Customer = () => {
             prizefix: prev.prizefix.map((item, i) =>
                 i === index ? { ...item, [field]: value } : item
             )
-
-
-            // // Immediately calculate amount when quantity or rate changes
-            // if (field === 'quantity' || field === 'rate') {
-            //     updatedProduct.amount = Number(updatedProduct.quantity || 0) * Number(updatedProduct.rate || 0);
-            // }
-
-
-            // Calculate totals
-            // const subTotal = newProducts.reduce((sum, product) => sum + (Number(product.amount) || 0), 0);
-            // const transportCost = Number(prev.transportAndCasting || 0);
-            // const baseAmount = subTotal + transportCost;
-
-            // Calculate GST based on rates
-            // const sgst = (baseAmount * (gstRates.sgstRate / 100));
-            // const cgst = (baseAmount * (gstRates.cgstRate / 100));
-            // const igst = (baseAmount * (gstRates.igstRate / 100));
-
-            // return {
-            //     ...prev,
-            //     products: newProducts,
-            // amount: baseAmount,
-            // sgst: sgst,
-            // cgst: cgst,
-            // igst: igst,
-            // totalAmount: baseAmount + (prev.GSTnumber.startsWith('24') ? (sgst + cgst) : igst)
-            // }
         }));
     };
 
@@ -353,15 +336,15 @@ const Customer = () => {
     const fetchGSTDetails = async (gstNumber: string) => {
         try {
             const response = await fetch(`/api/gst-proxy?gstNumber=${gstNumber}`);
-    
+
             // Check if response is JSON (based on the 'Content-Type' header)
             const contentType = response.headers.get('Content-Type');
             if (!response.ok || (contentType && !contentType.includes('application/json'))) {
                 throw new Error('Expected JSON response, but got something else');
             }
-    
+
             const data = await response.json();
-    
+
             if (data?.success) {
                 return {
                     legalName: data.data.lgnm || '',
@@ -375,7 +358,7 @@ const Customer = () => {
             return null;
         }
     };
-   
+
     const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
 
@@ -533,6 +516,7 @@ const Customer = () => {
         setFormData(purchase);
         setIsEditMode(true);
         setOpen(true);
+        inputRef.current?.focus();
     };
 
     const CustomToolbar = () => {
@@ -608,28 +592,6 @@ const Customer = () => {
             })
         );
 
-        // Calculate totals for numeric columns
-        // const totals: { [key: string]: number } = {};
-        // const numericFields = ['amount', 'totalAmount', 'sgst', 'cgst', 'igst'];
-
-        // keys.forEach((key) => {
-        //     if (numericFields.includes(key)) {
-        //         totals[key] = purchases.reduce((sum, purchase) => sum + (purchase[key] || 0), 0);
-        //     }
-        // });
-
-        // Prepare footer row with styled totals
-        // const footerRow = keys.map((key, index) => {
-        //     if (numericFields.includes(key)) {
-        //         const value = totals[key] || 0;
-        //         return Number(value).toFixed(2);
-        //     }
-        //     if (index === 0) {
-        //         return 'Total';
-        //     }
-        //     return '';
-        // });
-
         // Calculate rows per page based on content height
         const calculateRowsPerPage = (firstPageData: any[]) => {
             const testTable = doc.autoTable({
@@ -663,22 +625,7 @@ const Customer = () => {
 
         // Process each page
         pages.forEach((pageData, pageIndex) => {
-            // Calculate page totals
-            // const pageTotals: { [key: string]: number } = {};
-            // keys.forEach((key) => {
-            //     if (numericFields.includes(key)) {
-            //         pageTotals[key] = pageData.reduce((sum, row) => {
-            //             // Extract numeric value from the cell content
-            //             const value = typeof row[keys.indexOf(key)] === 'object'
-            //                 ? Number(row[keys.indexOf(key)].content)
-            //                 : Number(row[keys.indexOf(key)]);
-            //             return sum + (isNaN(value) ? 0 : value);
-            //         }, 0);
-            //         grandTotals[key] = (grandTotals[key] || 0) + pageTotals[key];
-            //     }
-            // });
 
-            // Add page data with page totals
             doc.autoTable({
                 head: [headers],
                 body: pageData,
@@ -722,7 +669,6 @@ const Customer = () => {
         doc.save('purchases-list.pdf');
     };
 
-    // Recalculate totals with new GST rates
     //     setFormData(prev => {
     //         const subTotal = prev.products.reduce((sum, product) => sum + (product.amount || 0), 0);
     //         const transportCost = Number(prev.transportAndCasting) || 0;
@@ -786,7 +732,7 @@ const Customer = () => {
         const fetchProducts = async () => {
             try {
                 const response = await productService.getAllProducts();
-                // Group products by name with their available sizes
+                setProducts(response.data.products);
                 const groupedProducts = response.data.products.reduce((acc: any[], product: any) => {
                     const existing = acc.find(p => p.name === product.productName);
                     if (existing) {
@@ -1030,6 +976,17 @@ const Customer = () => {
                             <MenuItem
                                 key={size}
                                 value={size}
+                                onClick={() => {
+                                    setFormData(prev => {
+                                        const value = products?.find(p => p.productName == product.productName && p.size === size)?.rate
+                                        return {
+                                            ...prev,
+                                            prizefix: prev.prizefix.map((item, i) =>
+                                                i === index ? { ...item, rate: value } : item
+                                            )
+                                        }
+                                    });
+                                }}
                                 sx={{
                                     '&:hover': {
                                         backgroundColor: 'var(--primary-color)',
@@ -1049,12 +1006,12 @@ const Customer = () => {
         setFormData(prev => {
             const newSite = {
                 ...initialSite,
-                challanNumber : `S${ Array.isArray(prev.sites) ? prev.sites.length : 0}C0`
+                challanNumber: `S${Array.isArray(prev.sites) ? prev.sites.length : 0}C0`
             }
             return {
                 ...prev,
                 sites: Array.isArray(prev.sites) ? [...prev.sites, newSite] : [newSite]
-            }    
+            }
         });
     };
 
@@ -1138,12 +1095,53 @@ const Customer = () => {
 
     useEffect(() => {
         if (open && addButtonRef.current) {
-            // Add a small delay to ensure the button is rendered before focusing
-            setTimeout(() => {
-                addButtonRef.current?.focus();
-            }, 100); // Adjust the delay as needed (100ms here)
+
+            addButtonRef.current?.focus();
         }
-    }, [open]);
+    }, [location.pathname]);
+
+    const handleCustomerSearchChange = (e: any) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+        fetchCustomerss(query);
+    };
+
+    const fetchCustomerss = debounce(async (query) => {
+        if (query) {
+            try {
+                const response = await customerService.getCustomerByName(query);
+                const data = await response.data.customers;
+                setCustomers(data);
+            } catch (error) {
+                console.error('Error fetching customers:', error);
+            }
+        } else {
+            setCustomers([]);
+        }
+    }, 500);
+
+    const handleCustomerSelect = (customer: ICutomer) => {
+        setSelectedCustomer(customer);
+        setSearchQuery(customer.customerName as string); // Optionally, set the search input to the selected customer name
+        setCustomers([]);
+
+        setFormData((prev) => {
+
+            const updatedForm = {
+                ...prev,
+                customerName: customer.customerName as string,
+                customerId: customer._id || '',
+                mobileNumber: customer.mobileNumber as string,
+            };
+            if (customer.sites?.length || 0 < 2) {
+                const challanNUmber = customer?.sites?.[0]?.challanNumber.split('C') || ['S0', '-1'];
+                updatedForm.sites[0].siteName = customer?.sites?.[0].siteName || '';
+                updatedForm.sites[0].siteAddress = customer?.sites?.[0].siteAddress || '';
+            }
+
+            return updatedForm;
+        });
+    };
 
     return (
         <Box sx={{ p: 2 }}>
@@ -1156,8 +1154,9 @@ const Customer = () => {
                     setIsEditMode(false);
                     setFormData(initialFormData);
                     setOpen(true);
+                    inputRef.current?.focus();
                 }}
-                autoFocus 
+                autoFocus
             >
                 <PersonAddAltIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
                 Add new Customer
@@ -1177,14 +1176,77 @@ const Customer = () => {
                         <Stack spacing={2}>
                             {/* First Row */}
                             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                            <Box flex={1}>
-                                    <FormInput
-                                        name="customerName"
+                                <Box flex={1} sx={{
+                                    position: 'relative',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                    margin: 'auto',
+                                    '& .MuiBox-root': {
+                                        margin: 'auto'
+                                    },
+                                }}>
+                                    <TextField
+                                        ref={inputRef}
                                         label="Customer Name"
-                                        value={formData.customerName}
-                                        onChange={handleChange}
+                                        value={searchQuery}
+                                        className="customer-name-input"
+                                        onChange={handleCustomerSearchChange}
+                                        fullWidth
                                         required
+                                        autoComplete="on"
+                                        variant="outlined"
+                                        size="small"
+                                        sx={{
+                                            height: '35px',
+                                            '& .MuiInputBase-root': {
+                                                height: '35px',
+                                            },
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '4px',
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#7b4eff',
+                                                    color: '#7b4eff'
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#7b4eff',
+                                                    color: '#7b4eff'
+                                                },
+                                            },
+                                        }}
                                     />
+                                    {customers.length > 0 && (
+                                        <Paper
+                                            sx={{
+                                                position: 'absolute',
+                                                top: '73%',
+                                                left: 0,
+                                                right: 0,
+                                                zIndex: 10,
+                                                mt: 1,
+                                                maxHeight: 200,
+                                                border: '2px solid var(--primary-color)',
+                                                borderTop: 'none',
+                                                overflowY: 'auto',
+                                                backgroundColor: 'var(--surface-light)',
+                                            }}
+                                        >
+                                            {customers.map((customer) => (
+                                                <Box
+                                                    key={customer._id}
+                                                    sx={{
+                                                        p: 1,
+                                                        cursor: 'pointer',
+                                                        '&:hover': { backgroundColor: 'lightgray' },
+                                                    }}
+                                                    onClick={() => handleCustomerSelect(customer)}
+                                                >
+                                                    {customer.customerName} {/* Display customerName */}
+                                                </Box>
+                                            ))}
+                                        </Paper>
+                                    )}
                                 </Box>
                                 <Box flex={1}>
                                     <FormInput
@@ -1206,7 +1268,7 @@ const Customer = () => {
                                         validate={validateGST}
                                     />
                                 </Box>
-                                
+
                             </Stack>
 
                             {/* Second Row */}
@@ -1340,16 +1402,16 @@ const Customer = () => {
                                                         required
                                                     />
                                                 </Box>
-                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',justifyItems: "center" }}>
+                                                <Box sx={{ ml: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', justifyItems: "center" }}>
                                                     {index == formData.sites.length - 1 ? <Button
                                                         onClick={addSite}
                                                         startIcon={<AddIcon />}
                                                         variant="outlined"
-                                                        sx={{ 
+                                                        sx={{
                                                             color: 'var(--success-color)',
-                                                            border : '2px solid var(--success-color)',
-                                                            padding : '4px'
-                                                         }}
+                                                            border: '2px solid var(--success-color)',
+                                                            padding: '4px'
+                                                        }}
                                                     >
                                                         Add Site
                                                     </Button> : ""}
@@ -1358,7 +1420,7 @@ const Customer = () => {
                                                         color="error"
                                                         size="small"
                                                         sx={{
-                                                            marginLeft : "3px",
+                                                            marginLeft: "3px",
                                                             '&:hover': {
                                                                 backgroundColor: 'error.lighter'
                                                             }
@@ -1414,20 +1476,20 @@ const Customer = () => {
                                                     />
                                                 </Box>
                                                 <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-                                                    {index == formData.prizefix.length-1?
-                                                    <Button
-                                                    onClick={addProduct}
-                                                    startIcon={<AddIcon />}
-                                                    variant="outlined"
-                                                    sx={{ 
-                                                        color: 'var(--success-color)',
-                                                        border : '2px solid var(--success-color)',
-                                                        padding : '4px'
-                                                     }}
-                                                >
-                                                    Add Product
-                                                </Button> : ''
-                                                }
+                                                    {index == formData.prizefix.length - 1 ?
+                                                        <Button
+                                                            onClick={addProduct}
+                                                            startIcon={<AddIcon />}
+                                                            variant="outlined"
+                                                            sx={{
+                                                                color: 'var(--success-color)',
+                                                                border: '2px solid var(--success-color)',
+                                                                padding: '4px'
+                                                            }}
+                                                        >
+                                                            Add Product
+                                                        </Button> : ''
+                                                    }
                                                     <IconButton
                                                         onClick={() => removeProduct(index)}
                                                         color="error"
@@ -1445,7 +1507,7 @@ const Customer = () => {
                                         </Paper>
                                     ))}
                                 </Stack>
-                                
+
                             </Paper>
 
                             {/* Action Buttons */}
@@ -1454,7 +1516,7 @@ const Customer = () => {
                                     Cancel
                                 </Button>
                                 <Button type="submit" variant="contained" sx={{ bgcolor: '#7b4eff', color: 'white' }}>
-                                    {isEditMode ? 'Update Purchase' : 'Save Purchase'}
+                                    {isEditMode ? 'Update Customer' : 'Save CUstomer'}
                                 </Button>
                             </Stack>
                         </Stack>
