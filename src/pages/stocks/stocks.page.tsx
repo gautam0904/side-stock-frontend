@@ -5,7 +5,6 @@ import {
   Box,
   IconButton,
   Paper,
-  CircularProgress,
   Stack,
   Tooltip,
   Typography
@@ -42,7 +41,7 @@ const Stocks = () => {
         { field: 'no', headerName: 'No', width: 70, sortable: false, filterable: false, disableColumnMenu: true },
         { field: 'productName', headerName: 'Product Name', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
         { field: 'size', headerName: 'Size', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
-        { field: 'stock', headerName: 'In Stock', width: 150, sortable: false, filterable: false, disableColumnMenu: true },
+        { field: 'stock', headerName: 'Godown Stock', width: 150, sortable: false, filterable: false, disableColumnMenu: true },
         { field: 'rented', headerName: 'Rented', width: 150, sortable: false, filterable: false, disableColumnMenu: true },
         { field: 'loss', headerName: 'Loss', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
         { field: 'totalStock', headerName: 'Total', width: 130, sortable: false, filterable: false, disableColumnMenu: true },
@@ -73,7 +72,6 @@ const Stocks = () => {
       setProducts(ProductsWithNumbers);
       setTotalRows(totalCount);
 
-      // Create the transposed data
       const transposed = transposeData(ProductsWithNumbers);
       setTransposedData(transposed);
     } catch (error: any) {
@@ -84,14 +82,11 @@ const Stocks = () => {
     }
   }, [loading]);
 
-  // Function to transpose data
   const transposeData = (data: any[]) => {
-    // Extracting the columns (attributes)
     const attributes = ['size', 'stock', 'rented', 'loss', 'total'];
 
-    // Transposing rows to columns
     return attributes.map((attribute, index) => ({
-      id: attribute, // Use attribute as the unique id for the row
+      id: attribute,
       attribute: attribute,
       ...data.reduce((acc, item, itemIndex) => {
         acc[`product-${itemIndex}`] = item[attribute];
@@ -111,7 +106,6 @@ const Stocks = () => {
   return (
     <Box sx={{ p: 2 }}>
       <Paper sx={{ height: 600, width: '100%' }}>
-        {/* Button to toggle orientation */}
         <Stack direction="row" alignItems="center" sx={{ mb: 2 }}>
           <Typography variant="h6">Stock List</Typography>
           <Tooltip title="Toggle Landscape/Portrait">
