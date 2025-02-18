@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { customerService } from '../../api/customer.service'
 import { productService } from '../../api/product.service';
-import { Iprizefix, ISite } from 'src/DTO/customer.dto';
 import { toast } from 'react-hot-toast';
 import {
     Box,
@@ -27,7 +26,9 @@ import {
     TableContainer,
     Grid,
     TextField,
-    debounce
+    debounce,
+    Card,
+    CardContent
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridFilterModel, GridLogicOperator, GridFilterItem } from '@mui/x-data-grid';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
@@ -48,7 +49,6 @@ import {
 } from '@mui/x-data-grid';
 import { SelectChangeEvent } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import PhotoIcon from '@mui/icons-material/Photo';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
 import AddAPhotoIcon from '@mui/icons-material/AddAPhoto';
@@ -60,37 +60,49 @@ declare module 'jspdf' {
     }
 }
 
-const initialProduct: IProducts = {
-    productName: '',
-    size: '',
-    rate: 0,
-};
+interface Iprizefix {
+    _id?: string;
+    productName?: string;
+    size?: string;
+    rate?: number;
+}
+
+interface ISite {
+    siteName: string;
+    siteAddress: string;
+    challanNumber: string;
+    prizefix: Iprizefix[];
+}
+
+interface ICutomer {
+    _id?: string;
+    customerName?: string;
+    mobileNumber?: string;
+    partnerName?: string;
+    partnerMobileNumber?: string;
+    reference?: string;
+    referenceMobileNumber?: string;
+    residentAddress?: string;
+    aadharNo?: string;
+    pancardNo?: string;
+    GSTnumber?: string;
+    aadharPhoto?: File | string | null;
+    panCardPhoto?: File | string | null;
+    customerPhoto?: File | string | null;
+    sites?: ISite[];
+    [key: string]: any;
+}
 
 const initialSite: ISite = {
     siteName: '',
     siteAddress: '',
-    challanNumber: 'S1C1'
+    challanNumber: 'S1C1',
+    prizefix: [{
+        size: '',
+        productName: '',
+        rate: 0,
+    }],
 };
-
-interface ICutomer {
-    _id?: string;
-    customerName: string;
-    mobileNumber: string;
-    partnerName: string;
-    partnerMobileNumber: string;
-    reference: string;
-    referenceMobileNumber: string;
-    residentAddress: string;
-    aadharNo: string;
-    pancardNo: string;
-    GSTnumber: string;
-    aadharPhoto: File | string | null;
-    panCardPhoto: File | string | null;
-    customerPhoto: File | string | null;
-    prizefix: Iprizefix[];
-    sites: ISite[];
-    [key: string]: any;
-}
 
 const initialFormData: ICutomer = {
     customerName: '',
@@ -106,12 +118,12 @@ const initialFormData: ICutomer = {
     aadharPhoto: null,
     panCardPhoto: null,
     customerPhoto: null,
-    prizefix: [{
-        size: '',
-        productName: '',
-        rate: 0,
-    }],
     sites: [{
+        prizefix: [{
+            size: '',
+            productName: '',
+            rate: 0,
+        }],
         siteName: '',
         siteAddress: '',
         challanNumber: 'S1C0',
@@ -176,9 +188,11 @@ const Customer = () => {
     const [customers, setCustomers] = useState<ICutomer[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<ICutomer | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
-    const location1 = useLocation();
     const [products, setProducts] = useState<IProducts[] | null>(null);
-
+    const [selectedSiteIndex, setSelectedSiteIndex] = useState<number>(0);
+    const [siteDialogOpen, setSiteDialogOpen] = useState(false);
+    const [newSiteName, setNewSiteName] = useState('');
+    const [newSiteAddress, setNewSiteAddress] = useState('');
 
 
     const columns: GridColDef[] = [
@@ -230,32 +244,11 @@ const Customer = () => {
         }
     ];
 
-    const handleProductChange = (index: number, field: keyof IProducts, value: any) => {
-        setFormData(prev => ({
-            ...prev,
-            prizefix: prev.prizefix.map((item, i) =>
-                i === index ? { ...item, [field]: value } : item
-            )
-        }));
-    };
-
-    const addProduct = () => {
-        setFormData(prev => ({
-            ...prev,
-            prizefix: [...(prev.prizefix || []), {
-                productName: '',
-                size: '',
-                rate: 0
-            }]
-        }));
-    };
-
-    const removeProduct = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            prizefix: prev.prizefix.filter((_, i) => i !== index)
-        }));
-    };
+    useEffect(() => {
+        if (open && addButtonRef.current) {
+            addButtonRef.current?.focus();
+        }
+    }, [location.pathname]);
 
     const fetchCustomers = useCallback(async () => {
         if (fetchInProgress.current || loading) return;
@@ -286,7 +279,6 @@ const Customer = () => {
         }
     }, [loading]);
 
-    // Simplify initial fetch effect
     useEffect(() => {
         if (shouldFetch) {
             fetchCustomers();
@@ -299,39 +291,56 @@ const Customer = () => {
         setFormData(initialFormData);
     };
 
-    // const fetchGSTDetails = async (gstNumber: string) => {
-    //     try {
-    //         // Using a different free GST API
-    //         const response = await fetch(`https://api.gstincheck.co.in/v1/verify/${gstNumber}`, {
-    //             method: 'GET',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //                 'apikey': '4ff236814d3317fdd0479ca80b1b4cd4'
-    //             }
-    //         });
+    const handleCustomerSearchChange = (e: any) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+        fetchCustomerss(query);
+    };
 
-    //         if (!response.ok) {
-    //             throw new Error('Failed to fetch GST details');
-    //         }
+    const fetchCustomerss = debounce(async (query) => {
+        if (query) {
+            try {
+                const response = await customerService.getCustomerByName(query);
+                const data = await response.data.customers;
+                if (data.length == 0) {
+                    handleCustomerSelect({
+                        customerName: query.toString(),
+                        mobileNumber: '',
+                    })
+                }
+                setCustomers(data);
+            } catch (error) {
+                console.error('Error fetching customers:', error);
+            }
+        } else {
+            setCustomers([]);
+        }
+    }, 500);
 
-    //         const data = await response.json();
+    const handleCustomerSelect = (customer: ICutomer) => {
+        setSelectedCustomer(customer);
+        setSearchQuery(customer.customerName as string);
+        setCustomers([]);
 
-    //         // Check if the API call was successful
-    //         if (data && data.success) {
-    //             return {
-    //                 legalName: data.data.lgnm || '',
-    //                 tradeName: data.data.tradeNam || '',
-    //                 status: data.data.sts || ''
-    //             };
-    //         } else {
-    //             throw new Error(data.message || 'Failed to fetch GST details');
-    //         }
-    //     } catch (error) {
-    //         console.error('Error fetching GST details:', error);
-    //         return null;
-    //     }
-    // };
+        setFormData((prev) => {
 
+            const updatedForm = {
+                ...prev,
+                customerName: customer.customerName as string,
+                customerId: customer._id || '',
+                mobileNumber: customer.mobileNumber as string,
+            };
+            if (customer.sites?.length || 0 < 2) {
+                if (updatedForm.sites) {
+                    updatedForm.sites[0].siteName = customer?.sites?.[0].siteName || '';
+                    updatedForm.sites[0].siteAddress = customer?.sites?.[0].siteAddress || '';
+                    updatedForm.sites[0].challanNumber = customer?.sites?.[0]?.challanNumber || 'S0C1';
+                }
+            }
+
+            return updatedForm;
+        });
+    };
 
     const fetchGSTDetails = async (gstNumber: string) => {
         try {
@@ -362,19 +371,15 @@ const Customer = () => {
     const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
 
-        // Convert GST number to uppercase
         const processedValue = name === 'GSTnumber' ? value.toUpperCase() : value;
 
-        // Special handling for GST number
         if (name === 'GSTnumber' && processedValue.length === 15) {
             try {
                 setLoading(true);
 
-                // Fetch GST details
                 const gstDetails = await fetchGSTDetails(processedValue);
 
                 if (gstDetails) {
-                    // Check if the GST status is active
                     if (gstDetails.status.toLowerCase() !== 'active') {
                         toast.error('GST number is not active');
                     }
@@ -397,7 +402,6 @@ const Customer = () => {
                 setLoading(false);
             }
 
-            // Continue with existing GST number logic
             setFormData(prev => {
                 const newFormData = {
                     ...prev,
@@ -496,7 +500,6 @@ const Customer = () => {
             await customerService.deleteCustomer(customerToDelete);
             toast.success('Customer deleted successfully');
 
-            // Update purchases with recalculated numbers
             setCustomer(prevData => {
                 const filteredData = prevData.filter((item: ICutomer) => item._id !== customerToDelete);
                 return filteredData.map((purchase: ICutomer, index: number) => ({
@@ -553,13 +556,6 @@ const Customer = () => {
         );
     };
 
-    const formatCurrency = (amount: number) => {
-        return `₹ ${amount.toLocaleString('en-IN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        })}`;
-    };
-
     const downloadPDF = (visibleColumns: any[]) => {
         const doc = new jsPDF();
 
@@ -592,7 +588,6 @@ const Customer = () => {
             })
         );
 
-        // Calculate rows per page based on content height
         const calculateRowsPerPage = (firstPageData: any[]) => {
             const testTable = doc.autoTable({
                 head: [headers],
@@ -611,10 +606,8 @@ const Customer = () => {
             return Math.floor(availableHeight / tableRowHeight);
         };
 
-        // Calculate dynamic rows per page
         const rowsPerPage = calculateRowsPerPage(tableData);
 
-        // Split data into pages using calculated rowsPerPage
         const pages = [];
         for (let i = 0; i < tableData.length; i += rowsPerPage) {
             pages.push(tableData.slice(i, i + rowsPerPage));
@@ -623,7 +616,6 @@ const Customer = () => {
         let startY = 25;
         let grandTotals: { [key: string]: number } = {};
 
-        // Process each page
         pages.forEach((pageData, pageIndex) => {
 
             doc.autoTable({
@@ -645,14 +637,12 @@ const Customer = () => {
 
             startY = (doc as any).lastAutoTable.finalY + 10;
 
-            // Add new page if not the last page
             if (pageIndex < pages.length - 1) {
                 doc.addPage();
                 startY = 25;
             }
         });
 
-        // Add page numbers
         const pageCount = doc.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
@@ -668,66 +658,6 @@ const Customer = () => {
 
         doc.save('purchases-list.pdf');
     };
-
-    //     setFormData(prev => {
-    //         const subTotal = prev.products.reduce((sum, product) => sum + (product.amount || 0), 0);
-    //         const transportCost = Number(prev.transportAndCasting) || 0;
-    //         const baseAmount = subTotal + transportCost;
-
-    //         const newSgst = (baseAmount * (type === 'sgstRate' ? value : gstRates.sgstRate) / 100);
-    //         const newCgst = (baseAmount * (type === 'cgstRate' ? value : gstRates.cgstRate) / 100);
-    //         const newIgst = (baseAmount * (type === 'igstRate' ? value : gstRates.igstRate) / 100);
-
-    //         return {
-    //             ...prev,
-    //             sgst: newSgst,
-    //             cgst: newCgst,
-    //             igst: newIgst,
-    //             totalAmount: baseAmount + (prev.GSTnumber.startsWith('24') ? (newSgst + newCgst) : newIgst)
-    //         };
-    //     });
-    // };
-
-    // const handleGSTRateOptionChange = (value: string) => {
-    //     setSelectedGSTRate(value);
-    //     if (value === 'custom') {
-    //         setIsCustomGstRates(true);
-    //         // Keep existing rates when switching to custom
-    //         return;
-    //     }
-
-    //     setIsCustomGstRates(false);
-    //     const numericValue = Number(value);
-    //     const isHomeState = formData.GSTnumber.startsWith('24');
-
-    //     setGstRates({
-    //         sgstRate: isHomeState ? numericValue / 2 : 0,
-    //         cgstRate: isHomeState ? numericValue / 2 : 0,
-    //         igstRate: isHomeState ? 0 : numericValue
-    //     });
-
-    //     // Recalculate totals with new GST rates
-    //     setFormData(prev => {
-    //         const subTotal = prev.products.reduce((sum, product) => sum + (product.amount || 0), 0);
-    //         const transportCost = Number(prev.transportAndCasting) || 0;
-    //         const baseAmount = subTotal + transportCost;
-
-    //         const newSgst = isHomeState ? (baseAmount * (numericValue / 2) / 100) : 0;
-    //         const newCgst = isHomeState ? (baseAmount * (numericValue / 2) / 100) : 0;
-    //         const newIgst = isHomeState ? 0 : (baseAmount * numericValue / 100);
-
-    //         return {
-    //             ...prev,
-    //             amount: baseAmount,
-    //             sgst: newSgst,
-    //             cgst: newCgst,
-    //             igst: newIgst,
-    //             totalAmount: baseAmount + (isHomeState ? (newSgst + newCgst) : newIgst)
-    //         };
-    //     });
-    // };
-
-    // Fetch products on component mount
     useEffect(() => {
         const fetchProducts = async () => {
             try {
@@ -752,7 +682,6 @@ const Customer = () => {
         fetchProducts();
     }, []);
 
-    // Add custom product selection dialog
     const DetailPanelDialog = () => {
         const selectedCustomer = customer.find(p => p._id == selectedProductIndex?.toString());
         if (!selectedCustomer) return null;
@@ -824,7 +753,7 @@ const Customer = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {selectedCustomer.prizefix?.map((product, index) => (
+                                {selectedCustomer.prizefix?.map((product: any, index: any) => (
                                     <TableRow key={index}>
                                         <TableCell>{product.productName}</TableCell>
                                         <TableCell>{product.size}</TableCell>
@@ -917,132 +846,8 @@ const Customer = () => {
         );
     };
 
-    // Modify the product input section in the form
-    const productInput = (index: number, product: Iprizefix) => (
-        <Box sx={{
-            display: 'flex',
-            gap: 2,
-            alignItems: 'center',
-            flexDirection: { xs: 'column', md: 'row' },
-            width: '100%',
-            mb: 2
-        }}>
-            <Box flex={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
-                <StyledSelect
-                    fullWidth
-                    value={product.productName || ''}
-                    onChange={(e: SelectChangeEvent<unknown>) => {
-                        handleProductChange(index, 'productName', e.target.value);
-                        handleProductChange(index, 'size', '');
-                    }}
-                    displayEmpty
-                    renderValue={(value) => (value as string) || 'Select Product'}
-                    sx={{ minWidth: { xs: '100%', md: 200 } }}
-                >
-                    <MenuItem disabled value="">
-                        <em>Select Product</em>
-                    </MenuItem>
-                    {productOptions.map((option) => (
-                        <MenuItem
-                            key={option.name}
-                            value={option.name}
-                            sx={{
-                                '&:hover': {
-                                    backgroundColor: '#7b4eff',
-                                }
-                            }}
-                        >
-                            {option.name}
-                        </MenuItem>
-                    ))}
-                </StyledSelect>
-            </Box>
-            <Box flex={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
-                <StyledSelect
-                    fullWidth
-                    value={product.size || ''}
-                    onChange={(e) => handleProductChange(index, 'size', e.target.value)}
-                    disabled={!product.productName}
-                    displayEmpty
-                    renderValue={(value: unknown) => (value as string) || 'Select Size'}
-                    sx={{ minWidth: { xs: '100%', md: 150 } }}
-                >
-                    <MenuItem disabled value="">
-                        <em>Select Size</em>
-                    </MenuItem>
-                    {productOptions
-                        .find(p => p.name === product.productName)
-                        ?.sizes.map((size) => (
-                            <MenuItem
-                                key={size}
-                                value={size}
-                                onClick={() => {
-                                    setFormData(prev => {
-                                        const value = products?.find(p => p.productName == product.productName && p.size === size)?.rate
-                                        return {
-                                            ...prev,
-                                            prizefix: prev.prizefix.map((item, i) =>
-                                                i === index ? { ...item, rate: value } : item
-                                            )
-                                        }
-                                    });
-                                }}
-                                sx={{
-                                    '&:hover': {
-                                        backgroundColor: 'var(--primary-color)',
-                                    }
-                                }}
-                            >
-                                {size}
-                            </MenuItem>
-                        ))}
-                </StyledSelect>
-            </Box>
-        </Box>
-    );
-
-    // Add site handling functions
-    const addSite = () => {
-        setFormData(prev => {
-            const newSite = {
-                ...initialSite,
-                challanNumber: `S${Array.isArray(prev.sites) ? prev.sites.length : 0}C0`
-            }
-            return {
-                ...prev,
-                sites: Array.isArray(prev.sites) ? [...prev.sites, newSite] : [newSite]
-            }
-        });
-    };
-
-    const removeSite = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            sites: Array.isArray(prev.sites)
-                ? prev.sites.filter((_, i) => i !== index)
-                : [initialSite]
-        }));
-    };
-
-    const handleSiteChange = (index: number, field: keyof ISite, value: string) => {
-        setFormData(prev => {
-            const currentSites = Array.isArray(prev.sites) ? prev.sites : [initialSite];
-            const newSites = [...currentSites];
-            newSites[index] = {
-                ...newSites[index],
-                [field]: value
-            };
-            return {
-                ...prev,
-                sites: newSites
-            };
-        });
-    };
-
-    // Add photo upload functionality
     const handlePhotoUpload = async (field: 'aadharPhoto' | 'panCardPhoto' | 'customerPhoto', file: File) => {
         try {
-            console.log('Uploading file:', field, file); // Debug log
             setFormData(prev => ({
                 ...prev,
                 [field]: file
@@ -1054,7 +859,6 @@ const Customer = () => {
         }
     };
 
-    // Photo upload buttons with proper icons
     const PhotoUploadButton = ({ field, icon, label }: {
         field: 'aadharPhoto' | 'panCardPhoto' | 'customerPhoto',
         icon: React.ReactNode,
@@ -1093,55 +897,550 @@ const Customer = () => {
         </Box>
     );
 
-    useEffect(() => {
-        if (open && addButtonRef.current) {
-
-            addButtonRef.current?.focus();
-        }
-    }, [location.pathname]);
-
-    const handleCustomerSearchChange = (e: any) => {
-        const query = e.target.value;
-        setSearchQuery(query);
-        fetchCustomerss(query);
+    const handleProductChange = (siteIndex: number, productIndex: number, field: keyof Iprizefix, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            sites: prev.sites?.map((site, i) =>
+                i === siteIndex ? {
+                    ...site,
+                    prizefix: site.prizefix.map((product, j) =>
+                        j === productIndex ? { ...product, [field]: value } : product
+                    )
+                } : site
+            )
+        }));
     };
 
-    const fetchCustomerss = debounce(async (query) => {
-        if (query) {
-            try {
-                const response = await customerService.getCustomerByName(query);
-                const data = await response.data.customers;
-                setCustomers(data);
-            } catch (error) {
-                console.error('Error fetching customers:', error);
-            }
-        } else {
-            setCustomers([]);
-        }
-    }, 500);
+    const addProduct = (siteIndex: number) => {
+        setFormData(prev => ({
+            ...prev,
+            sites: prev.sites?.map((site, i) =>
+                i === siteIndex ? {
+                    ...site,
+                    prizefix: [...site.prizefix, { productName: '', size: '', rate: 0 }]
+                } : site
+            )
+        }));
+    };
 
-    const handleCustomerSelect = (customer: ICutomer) => {
-        setSelectedCustomer(customer);
-        setSearchQuery(customer.customerName as string); // Optionally, set the search input to the selected customer name
-        setCustomers([]);
+    const productInput = (
+        siteIndex: number,
+        productIndex: number,
+        product: Iprizefix
+    ) => (
+        <Box sx={{
+            display: 'flex',
+            gap: 2,
+            alignItems: 'center',
+            flexDirection: { xs: 'column', md: 'row' },
+            width: '100%',
+            mb: 2
+        }}>
+            <Box flex={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
+                <StyledSelect
+                    fullWidth
+                    value={product.productName || ''}
+                    onChange={(e: SelectChangeEvent<unknown>) => {
+                        handleProductChange(siteIndex, productIndex, 'productName', e.target.value);
+                        handleProductChange(siteIndex, productIndex, 'size', '');
+                    }}
+                    displayEmpty
+                    renderValue={(value) => (value as string) || 'Select Product'}
+                    sx={{ minWidth: { xs: '100%', md: 200 } }}
+                >
+                    <MenuItem disabled value="">
+                        <em>Select Product</em>
+                    </MenuItem>
+                    {productOptions.map((option) => (
+                        <MenuItem
+                            key={option.name}
+                            value={option.name}
+                            sx={{
+                                '&:hover': {
+                                    backgroundColor: '#7b4eff',
+                                    color: 'white'
+                                }
+                            }}
+                        >
+                            {option.name}
+                        </MenuItem>
+                    ))}
+                </StyledSelect>
+            </Box>
+            <Box flex={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
+                <StyledSelect
+                    fullWidth
+                    value={product.size || ''}
+                    onChange={(e) =>
+                        handleProductChange(siteIndex, productIndex, 'size', e.target.value)
+                    }
+                    disabled={!product.productName}
+                    displayEmpty
+                    renderValue={(value: unknown) => (value as string) || 'Select Size'}
+                    sx={{ minWidth: { xs: '100%', md: 150 } }}
+                >
+                    <MenuItem disabled value="">
+                        <em>Select Size</em>
+                    </MenuItem>
+                    {productOptions
+                        .find(p => p.name === product.productName)
+                        ?.sizes.map((size) => (
+                            <MenuItem
+                                key={size}
+                                value={size}
+                                onClick={() => {
+                                    const selectedRate = products?.find(p =>
+                                        p.productName === product.productName &&
+                                        p.size === size
+                                    )?.rate;
 
-        setFormData((prev) => {
+                                    handleProductChange(
+                                        siteIndex,
+                                        productIndex,
+                                        'rate',
+                                        selectedRate
+                                    );
+                                }}
+                                sx={{
+                                    '&:hover': {
+                                        backgroundColor: '#7b4eff',
+                                        color: 'white'
+                                    }
+                                }}
+                            >
+                                {size}
+                            </MenuItem>
+                        ))}
+                </StyledSelect>
+            </Box>
+        </Box>
+    );
 
-            const updatedForm = {
-                ...prev,
-                customerName: customer.customerName as string,
-                customerId: customer._id || '',
-                mobileNumber: customer.mobileNumber as string,
+    const removeProduct = (siteIndex: number, productIndex: number) => {
+        setFormData(prev => ({
+            ...prev,
+            sites: prev.sites?.map((site, i) =>
+                i === siteIndex ? {
+                    ...site,
+                    prizefix: site.prizefix.filter((_, j) => j !== productIndex)
+                } : site
+            )
+        }));
+    };
+
+    // const addSite = (name: string, address: string) => {
+    //     setFormData(prev => {
+    //         const newSite: ISite = {
+    //             siteName: name,
+    //             siteAddress: address,
+    //             challanNumber: `S${prev.sites?.length || 0 + 1}C${Math.floor(Math.random() * 1000)}`,
+    //             prizefix: []
+    //         };
+
+    //         return {
+    //             ...prev,
+    //             sites: [...prev.sites || [], newSite]
+    //         };
+    //     });
+    //     setSelectedSiteIndex(formData.sites?.length || 0);
+    //     setNewSiteName('');
+    //     setNewSiteAddress('');
+    // };
+
+    const removeSite = (index: number) => {
+        if (formData.sites?.length === 1) return;
+        setFormData(prev => ({
+            ...prev,
+            sites: prev.sites?.filter((_, i) => i !== index)
+        }));
+        setSelectedSiteIndex(Math.max(0, index - 1));
+    };
+
+    const handleSiteChange = (index: number, field: keyof ISite, value: string) => {
+        setFormData(prev => {
+            const currentSites = Array.isArray(prev.sites) ? prev.sites : [initialSite];
+            const newSites = [...currentSites];
+            newSites[index] = {
+                ...newSites[index],
+                [field]: value
             };
-            if (customer.sites?.length || 0 < 2) {
-                const challanNUmber = customer?.sites?.[0]?.challanNumber.split('C') || ['S0', '-1'];
-                updatedForm.sites[0].siteName = customer?.sites?.[0].siteName || '';
-                updatedForm.sites[0].siteAddress = customer?.sites?.[0].siteAddress || '';
-            }
-
-            return updatedForm;
+            return {
+                ...prev,
+                sites: newSites
+            };
         });
     };
+
+    // const SiteCreationDialog = () => (
+    //     <Dialog open={siteDialogOpen} onClose={() => setSiteDialogOpen(false)}>
+    //         <DialogTitle>Create New Site</DialogTitle>
+    //         <DialogContent>
+    //             <Box sx={{ mt: 2 }}>
+    //                 <TextField
+    //                     autoFocus
+    //                     fullWidth
+    //                     label="Site Name"
+    //                     value={newSiteName}
+    //                     onChange={(e) => setNewSiteName(e.target.value)}
+    //                     required
+    //                     sx={{ mb: 2 }}
+    //                 />
+    //                 <TextField
+    //                     fullWidth
+    //                     label="Site Address"
+    //                     value={newSiteAddress}
+    //                     onChange={(e) => setNewSiteAddress(e.target.value)}
+    //                     required
+    //                     multiline
+    //                     rows={3}
+    //                 />
+    //             </Box>
+    //         </DialogContent>
+    //         <DialogActions>
+    //             <Button onClick={() => setSiteDialogOpen(false)}>Cancel</Button>
+    //             <Button
+    //                 onClick={() => {
+    //                     if (newSiteName && newSiteAddress) {
+    //                         addSite(newSiteName, newSiteAddress);
+    //                         setSiteDialogOpen(false);
+    //                     }
+    //                 }}
+    //                 variant="contained"
+    //                 color="primary"
+    //             >
+    //                 Create Site
+    //             </Button>
+    //         </DialogActions>
+    //     </Dialog>
+    // );
+
+    const SiteCreationDialog = React.memo(({
+        open,
+        onClose,
+        newSiteName,
+        newSiteAddress,
+        setNewSiteName,
+        setNewSiteAddress,
+        addSite
+    }: any) => (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            fullWidth
+            maxWidth="sm"
+            sx={{
+                '& .MuiDialog-paper': {
+                    borderRadius: '12px',
+                    overflow: 'visible'
+                }
+            }}
+        >
+            <DialogTitle sx={{
+                bgcolor: 'primary.main',
+                color: 'white',
+                fontWeight: 600,
+                py: 2,
+                borderRadius: '12px 12px 0 0'
+            }}>
+                Create New Site
+            </DialogTitle>
+
+            <DialogContent sx={{ pt: 3, pb: 0 }}>
+                <Stack spacing={3} sx={{ mt: 1 }}>
+                    <FormInput
+                        autoFocus
+                        fullWidth
+                        name='siteName'
+                        label="Site Name"
+                        value={newSiteName}
+                        onChange={(e) => setNewSiteName(e.target.value)}
+                        required
+                    />
+
+                    <FormInput
+                        fullWidth
+                        name='siteAddress'
+                        label="Site Address"
+                        value={newSiteAddress}
+                        onChange={(e) => setNewSiteAddress(e.target.value)}
+                        required
+                        multiline
+                        rows={4}
+                        variant="outlined"
+                        inputProps={{ maxLength: 200 }}
+                    />
+                </Stack>
+            </DialogContent>
+
+            <DialogActions sx={{ p: 3, pt: 2 }}>
+                <Button
+                    onClick={onClose}
+                    variant="outlined"
+                    sx={{
+                        borderRadius: '8px',
+                        px: 3,
+                        color: 'text.secondary',
+                        borderColor: 'divider',
+                        '&:hover': {
+                            borderColor: 'primary.main',
+                            color: 'primary.main'
+                        }
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button
+                    onClick={() => {
+                        if (newSiteName.trim() && newSiteAddress.trim()) {
+                            addSite(newSiteName, newSiteAddress);
+                            onClose();
+                        }
+                    }}
+                    variant="contained"
+                    sx={{
+                        borderRadius: '8px',
+                        px: 4,
+                        bgcolor: 'primary.main',
+                        '&:hover': {
+                            bgcolor: 'primary.dark',
+                        }
+                    }}
+                >
+                    Create Site
+                </Button>
+            </DialogActions>
+        </Dialog>
+    ));
+
+    const addSite = useCallback((name: string, address: string) => {
+        setFormData(prev => {
+            const siteCount = prev.sites?.length || 0;
+            const newSite: ISite = {
+                siteName: name.trim(),
+                siteAddress: address.trim(),
+                challanNumber: `S${siteCount + 1}C${Math.floor(Math.random() * 1000)}`,
+                prizefix: []
+            };
+
+            return {
+                ...prev,
+                sites: [...prev.sites || [], newSite]
+            };
+        });
+        setNewSiteName('');
+        setNewSiteAddress('');
+    }, [setFormData]);
+
+    const handleCloseSiteDialog = useCallback(() => {
+        setSiteDialogOpen(false);
+    }, []);
+
+
+    const renderSiteSelection = () => (
+        <Paper sx={{ p: 3, mt: 3, backgroundColor: '#f8f9fa' }}>
+            <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                Project Sites
+                <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                    (Click to view site details)
+                </Typography>
+            </Typography>
+
+            <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: 2,
+                mb: 3
+            }}>
+                {formData.sites?.map((site, index) => (
+                    <Card
+                        key={index}
+                        onClick={() => setSelectedSiteIndex(index)}
+                        sx={{
+                            cursor: 'pointer',
+                            border: 2,
+                            borderColor: selectedSiteIndex === index ? 'primary.main' : 'divider',
+                            backgroundColor: selectedSiteIndex === index ? '#f0f4ff' : 'white',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-2px)',
+                                boxShadow: 2
+                            }
+                        }}
+                    >
+                        <CardContent>
+                            <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                // alignItems: 'center'
+                            }}>
+                                <Box sx={{ minWidth: 0 }}>
+                                    <Typography variant="subtitle1" sx={{
+                                        fontWeight: 600,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                    }}>
+                                        {site.siteName || `New Site ${index + 1}`}
+                                    </Typography>
+                                    <Typography variant="caption" color="textSecondary">
+                                        {site.siteAddress}
+                                    </Typography>
+                                </Box>
+                                <IconButton
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeSite(index);
+                                    }}
+                                    size="small"
+                                    sx={{ color: 'error.main' }}
+                                >
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            </Box>
+
+                            {site.siteAddress && (
+                                <Typography variant="body2" sx={{
+                                    mt: 1,
+                                    color: 'text.secondary',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden'
+                                }}>
+                                    {site.siteAddress}
+                                </Typography>
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
+            </Box>
+
+            <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => setSiteDialogOpen(true)}
+                sx={{
+                    borderStyle: 'dashed',
+                    borderWidth: 2,
+                    py: 2,
+                    '&:hover': {
+                        borderStyle: 'dashed',
+                        backgroundColor: 'action.hover'
+                    }
+                }}
+            >
+                Add New Site
+            </Button>
+
+            <SiteCreationDialog
+                open={siteDialogOpen}
+                onClose={handleCloseSiteDialog}
+                newSiteName={newSiteName}
+                newSiteAddress={newSiteAddress}
+                setNewSiteName={setNewSiteName}
+                setNewSiteAddress={setNewSiteAddress}
+                addSite={addSite}
+            />
+        </Paper>
+    );
+
+    const renderProductsForSite = () => {
+        const currentSite = formData.sites?.[selectedSiteIndex];
+
+        return (
+            <Paper sx={{
+                p: 3,
+                mt: 3,
+                borderRadius: '12px',
+                border: '1px solid',
+                borderColor: 'divider',
+                background: 'white'
+            }}>
+                <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 3
+                }}>
+                    <Typography variant="h6" sx={{
+                        color: 'primary.main',
+                        fontWeight: 600,
+                        textTransform: 'uppercase'
+                    }}>
+                        Products for {currentSite?.siteName || 'Selected Site'}
+                    </Typography>
+                    <Button
+                        onClick={() => addProduct(selectedSiteIndex)}
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        sx={{
+                            bgcolor: 'success.main',
+                            '&:hover': { bgcolor: 'success.dark' },
+                            borderRadius: '8px',
+                            px: 3,
+                            py: 1
+                        }}
+                    >
+                        Add Product
+                    </Button>
+                </Box>
+
+                <Stack spacing={3}>
+                    {currentSite?.prizefix?.map((product, productIndex) => (
+                        <Paper
+                            key={productIndex}
+                            sx={{
+                                p: 2,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: '8px',
+                                background: '#f8f9fa',
+                                position: 'relative'
+                            }}
+                        >
+                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+                                <Box flex={2} sx={{ width: '100%' }}>
+                                    {productInput(selectedSiteIndex, productIndex, product)}
+                                </Box>
+                                <Box flex={1}>
+                                    <FormInput
+                                        label="Rate"
+                                        name='rate'
+                                        type="number"
+                                        value={product.rate?.toString()}
+                                        onChange={(e) => handleProductChange(
+                                            selectedSiteIndex,
+                                            productIndex,
+                                            'rate',
+                                            Number(e.target.value))
+                                        }
+                                        sx={{
+                                            '& .MuiInputBase-input': {
+                                                textAlign: 'right',
+                                                pr: 2
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                                <IconButton
+                                    onClick={() => removeProduct(selectedSiteIndex, productIndex)}
+                                    sx={{
+                                        color: 'error.main',
+                                        position: { xs: 'absolute', md: 'static' },
+                                        top: 8,
+                                        right: 8
+                                    }}
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            </Stack>
+                        </Paper>
+                    ))}
+                </Stack>
+            </Paper>
+        );
+    }
 
     return (
         <Box sx={{ p: 2 }}>
@@ -1359,7 +1658,7 @@ const Customer = () => {
                             </Stack>
 
                             {/* Sites Section */}
-                            <Paper sx={{ p: 3, mt: 3 }}>
+                            {/* <Paper sx={{ p: 3, mt: 3 }}>
                                 <Typography variant="h6" sx={{ mb: 3, color: 'primary.main' }}>
                                     Sites
                                 </Typography>
@@ -1434,10 +1733,10 @@ const Customer = () => {
                                     ))}
                                 </Stack>
 
-                            </Paper>
+                            </Paper> */}
 
                             {/* Products Section */}
-                            <Paper sx={{ p: 3, mt: 3 }}>
+                            {/* <Paper sx={{ p: 3, mt: 3 }}>
                                 <Typography variant="h6" sx={{ mb: 3, color: 'primary.main' }}>
                                     Products
                                 </Typography>
@@ -1508,7 +1807,10 @@ const Customer = () => {
                                     ))}
                                 </Stack>
 
-                            </Paper>
+                            </Paper> */}
+
+                            {renderSiteSelection()}
+                            {renderProductsForSite()}
 
                             {/* Action Buttons */}
                             <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>

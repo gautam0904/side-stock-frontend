@@ -16,7 +16,7 @@ const Dashboard = React.lazy(() => import('./pages/dashboard/dashboard.page.tsx'
 const ConditionalNavbar = () => {
   const location = useLocation();
   
-  const excludeNavbarPaths = ['/login', '/signup'];
+  const excludeNavbarPaths = ['/login', '/signup', '/auth/login' , '/auth/signup'];
   
   if (excludeNavbarPaths.includes(location.pathname)) {
     return null;
