@@ -1,4 +1,4 @@
-export interface ICutomer {
+export interface ICustomer {
     _id?: string;
     customerName?: string;
     mobileNumber?: string;
@@ -12,24 +12,25 @@ export interface ICutomer {
     aadharPhoto?: string;
     panCardPhoto?: string;
     customerPhoto?: string;
-    prizefix?: Iprizefix[];
-    sites?: ISite[];
     GSTnumber?: string;
+    panCardNumber?: string;
+    date?: string;
     billTo?: string;
     billingAddress?: string;
-    date?: string;
+    sites?: ISite[];
 }
-
-export interface Iprizefix {
-    _id?: string;
-    productName?: string;
-    size?: string;
-    rate?: number;
-}
-
 
 export interface ISite {
-    siteName: string;
-    siteAddress: string;
+    siteName?: string;
+    siteAddress?: string;
+    siteSuperwiserName?: string;
+    siteSuperwiserNumber?: string;
     challanNumber: string;
-  }
+    prizefix?: IPrizefix[];
+}
+
+export interface IPrizefix {
+    productName?: string;
+    size?: string;
+    rate: number;
+}

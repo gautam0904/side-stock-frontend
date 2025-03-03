@@ -79,19 +79,36 @@ const Products = () => {
       headerName: 'Actions',
       width: 100,
       renderCell: (params) => (
-        <Box>
-          <Tooltip title="Edit">
-            <IconButton onClick={() => handleEditClick(params.row)} color="primary">
-              <EditIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete">
-            <IconButton onClick={() => handleDeleteClick(params.row._id)} color="error">
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
+        <Box 
+          sx={{ display: 'flex', alignItems: 'center', gap: 2 }} 
+          style={{ display: 'flex', alignItems: 'center', gap: '16px' }} // Forcefully applied inline styles
+        >
+          <EditIcon
+            fontSize="small"
+            onClick={() => handleEditClick(params.row)}
+            sx={{ color: 'var(--primary-color)', cursor: 'pointer' }}
+          />
+          <DeleteIcon
+            fontSize="small"
+            onClick={() => handleDeleteClick(params.row._id)}
+            sx={{ color: 'var(--error-color)', cursor: 'pointer' }}
+          />
         </Box>
       )
+      // renderCell: (params) => (
+      //   <Box>
+      //     <Tooltip title="Edit">
+      //       <IconButton onClick={() => handleEditClick(params.row)}>
+      //         <EditIcon />
+      //       </IconButton>
+      //     </Tooltip>
+      //     <Tooltip title="Delete">
+      //       <IconButton onClick={() => handleDeleteClick(params.row._id)} color="error">
+      //         <DeleteIcon />
+      //       </IconButton>
+      //     </Tooltip>
+      //   </Box>
+      // )
     }
   ], []);
 

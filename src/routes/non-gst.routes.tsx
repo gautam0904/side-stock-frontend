@@ -7,6 +7,7 @@ const Challan = React.lazy(() => import('../pages/challan/challan.page'));
 // const Payment = React.lazy(() => import('../pages/payment/payment.page'));
 const DirectBill = React.lazy(() => import('../pages/bill/bill.page'));
 const Customer = React.lazy(() => import('../pages/customer/customer.page'));
+// const Customer = React.lazy(() => import('../pages/customer/customernew.page'));
 
 const nonGstRoutes = [
 
