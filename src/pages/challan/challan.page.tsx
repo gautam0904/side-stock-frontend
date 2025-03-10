@@ -258,7 +258,7 @@ const Challan: React.FC = () => {
   const gridRef = useRef<any>(null);
 
   // ---------- Product Options ----------
-  const [productOptions, setProductOptions] = useState<{ name: string; sizes: string[] }[]>([]);
+  const [productOptions, setProductOptions] = useState<{ name: string; sizes: string[] , quantity? :string}[]>([]);
 
   // ---------- Customer Searching ----------
   const [searchQuery, setSearchQuery] = useState('');
@@ -283,6 +283,8 @@ const Challan: React.FC = () => {
   const [siteSelectOpen, setSiteSelectOpen] = useState(false);
   const [productNameOpen, setProductNameOpen] = useState<boolean[]>([]);
   const [productSizeOpen, setProductSizeOpen] = useState<boolean[]>([]);
+
+  const [customerQut ,setCustomerQut] = useState<string>('');
 
   // ---------- Table Columns ----------
   const columns: GridColDef[] = [
@@ -433,7 +435,7 @@ const Challan: React.FC = () => {
 
       // If productName/size changed, find rate
       if (field === 'productName' || field === 'size') {
-        const foundPrize = selectedCustomer?.prizefix?.find(
+        const foundPrize = selectedCustomer?.sites[].prizefix?.find(
           (p) =>
             p.productName === (field === 'productName' ? value : updatedProduct.productName) &&
             p.size === (field === 'size' ? value : updatedProduct.size)
@@ -652,14 +654,14 @@ const Challan: React.FC = () => {
       try {
         const response = await productService.getAllProducts();
         const grouped = response.data.products.reduce(
-          (acc: { name: string; sizes: string[] }[], product: any) => {
+          (acc: { name: string; sizes: string[];quantity:string }[], product: any) => {
             const existing = acc.find((p) => p.name === product.productName);
             if (existing) {
               if (!existing.sizes.includes(product.size)) {
                 existing.sizes.push(product.size);
               }
             } else {
-              acc.push({ name: product.productName, sizes: [product.size] });
+              acc.push({ name: product.productName, sizes: [product.size],quantity: product.stock });
             }
             return acc;
           },
@@ -910,6 +912,15 @@ const Challan: React.FC = () => {
       setProductSizeOpen(newState);
     };
 
+    const productQuantity = (name : string , size : string) =>{
+      if (formData.type == "Return") {
+        return customerQut
+      } else if (formData.type = "Delivery") {
+        const PI = productOptions.findIndex((p) => formData.products[index].productName && formData.products[index].size)
+        return productOptions[PI].quantity?.toString() || '0'
+      }
+    }
+
     return (
       <Paper
         key={index}
@@ -925,6 +936,22 @@ const Challan: React.FC = () => {
           }
         }}
       >
+        <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={2}
+        alignItems="center"
+        position="relative"
+        >
+          {formData.type == 'Delivery' && formData.products[index].productName && formData.products[index].size ?
+          `Godown Stock : ${productQuantity(formData.products[index].productName ,formData.products[index].size)}`
+          :''}
+
+          {
+            formData.type == 'Return' && formData.products[index].productName && formData.products[index].size ?
+            `Godown Stock : ${productQuantity(formData.products[index].productName ,formData.products[index].size)}`
+            :''
+          }
+        </Stack>
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={2}
