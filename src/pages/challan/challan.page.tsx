@@ -27,7 +27,6 @@ import {
   CircularProgress,
   Stack,
   Paper,
-  Select,
   MenuItem,
   Table,
   TableBody,
@@ -86,59 +85,6 @@ const Form: React.FC<FormProps> = ({ onSubmit, children }) => {
   );
 };
 
-interface FormInputProps {
-  label: string;
-  name: string;
-  value?: any;
-  onChange?: React.ChangeEventHandler<HTMLInputElement>;
-  type?: React.HTMLInputTypeAttribute;
-  disabled?: boolean;
-  required?: boolean;
-  min?: number;
-  max?: number;
-  inputRef?: React.RefObject<HTMLInputElement>;
-}
-// export const FormInput: React.FC<FormInputProps> = ({
-//   label,
-//   name,
-//   value,
-//   onChange,
-//   type = 'text',
-//   disabled = false,
-//   required = false,
-//   min,
-//   max,
-//   inputRef
-// }) => {
-//   return (
-//     <TextField
-//       label={label}
-//       name={name}
-//       type={type}
-//       value={value}
-//       onChange={onChange}
-//       disabled={disabled}
-//       required={required}
-//       inputRef={inputRef}
-//       fullWidth
-//       size="small"
-//       inputProps={{ min, max }}
-//       sx={{
-//         '& .MuiOutlinedInput-root': {
-//           borderRadius: '4px',
-//           '&:hover .MuiOutlinedInput-notchedOutline': {
-//             borderColor: '#7b4eff'
-//           },
-//           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-//             borderColor: '#7b4eff'
-//           }
-//         }
-//       }}
-//     />
-//   );
-// };
-
-// ----------------- Extended jsPDF to ensure autoTable usage doesn't error -----------------
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
@@ -209,27 +155,9 @@ const modalStyle = {
   overflowY: 'auto'
 };
 
-// -------------- Styled Select for MUI --------------
-const StyledSelect = styled(Select)(({ theme }) => ({
-  '& .MuiOutlinedInput-notchedOutline': {
-    borderColor: theme.palette.mode === 'light' ? '#E0E3E7' : '#2D3843'
-  },
-  '& .MuiSelect-select': {
-    padding: '8px 14px',
-    backgroundColor: theme.palette.mode === 'light' ? '#fff' : '#1A2027'
-  },
-  '&:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: theme.palette.primary.main
-  },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: theme.palette.primary.main
-  },
-  '& .MuiSelect-icon': {
-    color: theme.palette.primary.main
-  }
-}));
+// Keep for site select – MUI style
+const StyledSiteSelect = styled('div')(() => ({})); // not used, but left for reference
 
-// ----------------------------------------------------------------
 const Challan: React.FC = () => {
   // ---------- State ----------
   const [open, setOpen] = useState(false);
@@ -258,7 +186,10 @@ const Challan: React.FC = () => {
   const gridRef = useRef<any>(null);
 
   // ---------- Product Options ----------
-  const [productOptions, setProductOptions] = useState<{ name: string; sizes: string[] , quantity? :string}[]>([]);
+  // E.g. { name: 'Steel Rod', sizes: ['12mm','16mm'], quantity: '20' }
+  const [productOptions, setProductOptions] = useState<
+    { name: string; sizes: string[]; quantity?: string }[]
+  >([]);
 
   // ---------- Customer Searching ----------
   const [searchQuery, setSearchQuery] = useState('');
@@ -272,19 +203,26 @@ const Challan: React.FC = () => {
   const customerNameRef = useRef<HTMLInputElement>(null);
   const mobileNumberRef = useRef<HTMLInputElement>(null);
   const siteAddressRef = useRef<HTMLInputElement>(null);
-
   const serviceChargeRef = useRef<HTMLInputElement>(null);
   const damageChargeRef = useRef<HTMLInputElement>(null);
   const loadingRef = useRef<HTMLInputElement>(null);
   const unloadingRef = useRef<HTMLInputElement>(null);
   const transportChargeRef = useRef<HTMLInputElement>(null);
 
-  // ---------- For controlling the 'open' state of each dropdown ----------
+  // ---------- For controlling the 'open' state of the site MUI dropdown ----------
   const [siteSelectOpen, setSiteSelectOpen] = useState(false);
-  const [productNameOpen, setProductNameOpen] = useState<boolean[]>([]);
-  const [productSizeOpen, setProductSizeOpen] = useState<boolean[]>([]);
 
-  const [customerQut ,setCustomerQut] = useState<string>('');
+  // ---------- For controlling the 'open' state of each productName, size (custom) ----------
+  // We'll track "open" in arrays, one per product row
+  const [productNameOpen, setProductNameOpen] = useState<boolean[]>(
+    formData.products.map(() => false)
+  );
+  const [productSizeOpen, setProductSizeOpen] = useState<boolean[]>(
+    formData.products.map(() => false)
+  );
+
+  // Suppose you had some logic for "Return" stock quantity:
+  const [customerQut, setCustomerQut] = useState<string>(''); // example usage
 
   // ---------- Table Columns ----------
   const columns: GridColDef[] = [
@@ -433,11 +371,11 @@ const Challan: React.FC = () => {
       const newProducts = [...prev.products];
       const updatedProduct = { ...newProducts[index], [field]: value };
 
-      // If productName/size changed, find rate
+      // If productName/size changed, find rate from customer site "prizefix" or from your logic
       if (field === 'productName' || field === 'size') {
-        const foundPrize = selectedCustomer?.sites[].prizefix?.find(
+        const foundPrize = selectedCustomer?.sites?.flatMap((st) => st.prizefix).find(
           (p) =>
-            p.productName === (field === 'productName' ? value : updatedProduct.productName) &&
+            p && p.productName === (field === 'productName' ? value : updatedProduct.productName) &&
             p.size === (field === 'size' ? value : updatedProduct.size)
         );
         if (foundPrize?.rate) {
@@ -589,7 +527,7 @@ const Challan: React.FC = () => {
           case 'date':
             return new Date(c[key]).toLocaleDateString('en-GB');
           default:
-            return c[key]?.toString() || '';
+            return c[key as keyof IChallan]?.toString() || '';
         }
       })
     );
@@ -654,14 +592,21 @@ const Challan: React.FC = () => {
       try {
         const response = await productService.getAllProducts();
         const grouped = response.data.products.reduce(
-          (acc: { name: string; sizes: string[];quantity:string }[], product: any) => {
+          (
+            acc: { name: string; sizes: string[]; quantity?: string }[],
+            product: any
+          ) => {
             const existing = acc.find((p) => p.name === product.productName);
             if (existing) {
               if (!existing.sizes.includes(product.size)) {
                 existing.sizes.push(product.size);
               }
             } else {
-              acc.push({ name: product.productName, sizes: [product.size],quantity: product.stock });
+              acc.push({
+                name: product.productName,
+                sizes: [product.size],
+                quantity: product.stock?.toString() || '0'
+              });
             }
             return acc;
           },
@@ -749,6 +694,8 @@ const Challan: React.FC = () => {
     setCustomers([]);
     setSites([]);
     setDatePickerOpen(false);
+    setProductNameOpen([]);
+    setProductSizeOpen([]);
   };
 
   // ------------------ Product Detail Panel Dialog ------------------
@@ -886,40 +833,53 @@ const Challan: React.FC = () => {
     );
   };
 
-  // ------------------ Render each product row with improved focus logic ------------------
+  // ------------------ Render each product row (custom dropdown for productName, size) ------------------
   const renderProductRow = (product: IProducts, index: number) => {
+    // Are these dropdowns open?
     const isPNameOpen = productNameOpen[index] || false;
     const isSizeOpen = productSizeOpen[index] || false;
 
+    // Open/close for product name
     const handleProductNameFocus = () => {
       const newState = [...productNameOpen];
       newState[index] = true;
       setProductNameOpen(newState);
     };
-    const handleProductNameClose = () => {
-      const newState = [...productNameOpen];
-      newState[index] = false;
-      setProductNameOpen(newState);
+    const handleProductNameBlur = () => {
+      setTimeout(() => {
+        const newState = [...productNameOpen];
+        newState[index] = false;
+        setProductNameOpen(newState);
+      }, 100);
     };
+
+    // Open/close for size
     const handleProductSizeFocus = () => {
       const newState = [...productSizeOpen];
       newState[index] = true;
       setProductSizeOpen(newState);
     };
-    const handleProductSizeClose = () => {
-      const newState = [...productSizeOpen];
-      newState[index] = false;
-      setProductSizeOpen(newState);
+    const handleProductSizeBlur = () => {
+      setTimeout(() => {
+        const newState = [...productSizeOpen];
+        newState[index] = false;
+        setProductSizeOpen(newState);
+      }, 100);
     };
 
-    const productQuantity = (name : string , size : string) =>{
-      if (formData.type == "Return") {
-        return customerQut
-      } else if (formData.type = "Delivery") {
-        const PI = productOptions.findIndex((p) => formData.products[index].productName && formData.products[index].size)
-        return productOptions[PI].quantity?.toString() || '0'
+    // For "Godown Stock" logic
+    const productQuantity = (name: string, size: string) => {
+      if (formData.type === 'Return') {
+        return customerQut;
+      } else if (formData.type === 'Delivery') {
+        // find the matching product in productOptions
+        const matchingOpt = productOptions.find(
+          (p) => p.name === name && p.sizes.includes(size)
+        );
+        return matchingOpt?.quantity || '0';
       }
-    }
+      return '0';
+    };
 
     return (
       <Paper
@@ -936,100 +896,168 @@ const Challan: React.FC = () => {
           }
         }}
       >
-        <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={2}
-        alignItems="center"
-        position="relative"
-        >
-          {formData.type == 'Delivery' && formData.products[index].productName && formData.products[index].size ?
-          `Godown Stock : ${productQuantity(formData.products[index].productName ,formData.products[index].size)}`
-          :''}
+        {/* Potential display of "Godown Stock" if name+size selected */}
+        {(product.productName && product.size) ? (
+          <Box sx={{ mb: 1, color: 'gray', fontSize: '0.9rem' }}>
+            Godown Stock: {productQuantity(product.productName, product.size)}
+          </Box>
+        ) : null}
 
-          {
-            formData.type == 'Return' && formData.products[index].productName && formData.products[index].size ?
-            `Godown Stock : ${productQuantity(formData.products[index].productName ,formData.products[index].size)}`
-            :''
-          }
-        </Stack>
+        {/* ROW FIELDS */}
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={2}
           alignItems="center"
           position="relative"
         >
-          {/* Product Name Select */}
+          {/* ----------- CUSTOM DROPDOWN: PRODUCT NAME ----------- */}
           <Box flex={2} minWidth={180}>
-            <StyledSelect
-              fullWidth
-              open={isPNameOpen}
-              onOpen={handleProductNameFocus}
-              onClose={handleProductNameClose}
+            <label style={{ fontWeight: 500, fontSize: '0.875rem', display: 'block', marginBottom: 4 }}>
+              Product Name
+            </label>
+            <div
+              tabIndex={0}
               onFocus={handleProductNameFocus}
-              // onClick also ensures it opens if directly clicked
-              onClick={() => {
-                if (!isPNameOpen) handleProductNameFocus();
-              }}
-              value={product.productName || ''}
-              displayEmpty
-              renderValue={(selected: unknown) => (selected as string) || 'Select Product'}
-              onChange={(e: SelectChangeEvent<unknown>) => {
-                handleProductChange(index, 'productName', e.target.value);
-                handleProductNameClose();
-                setTimeout(() => handleProductSizeFocus(), 50);
-              }}
-              sx={{
-                height: '35px',
-                '& .MuiSelect-root': { height: '35px' }
+              onBlur={handleProductNameBlur}
+              style={{
+                position: 'relative',
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                padding: '6px 8px',
+                cursor: 'pointer',
+                minHeight: 35
               }}
             >
-              <MenuItem disabled value="">
-                <em>Select Product</em>
-              </MenuItem>
-              {productOptions.map((option) => (
-                <MenuItem key={option.name} value={option.name}>
-                  {option.name}
-                </MenuItem>
-              ))}
-            </StyledSelect>
+              {product.productName || <span style={{ color: '#888' }}>Select Product</span>}
+
+              {isPNameOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    background: '#fff',
+                    border: '1px solid #ddd',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    marginTop: 4,
+                    zIndex: 999
+                  }}
+                >
+                  {productOptions.length === 0 && (
+                    <div style={{ padding: '6px' }}>
+                      <em>No products found</em>
+                    </div>
+                  )}
+                  {productOptions.map((option) => (
+                    <div
+                      key={option.name}
+                      style={{
+                        padding: '6px',
+                        borderBottom: '1px solid #eee'
+                      }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleProductChange(index, 'productName', option.name);
+                        // reset size
+                        handleProductChange(index, 'size', '');
+                        // close name dropdown
+                        const newState = [...productNameOpen];
+                        newState[index] = false;
+                        setProductNameOpen(newState);
+                        // focus next field => size
+                        setTimeout(() => {
+                          const sizeDiv = document.getElementById(`sizeDiv-${index}`);
+                          sizeDiv?.focus();
+                        }, 50);
+                      }}
+                    >
+                      {option.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </Box>
 
-          {/* Size Select */}
+          {/* ----------- CUSTOM DROPDOWN: SIZE ----------- */}
           <Box flex={1} minWidth={120}>
-            <StyledSelect
-              fullWidth
-              open={isSizeOpen}
-              onOpen={handleProductSizeFocus}
-              onClose={handleProductSizeClose}
-              onFocus={handleProductSizeFocus}
-              onClick={() => {
-                if (!isSizeOpen) handleProductSizeFocus();
+            <label style={{ fontWeight: 500, fontSize: '0.875rem', display: 'block', marginBottom: 4 }}>
+              Size
+            </label>
+            <div
+              id={`sizeDiv-${index}`}
+              tabIndex={product.productName ? 0 : -1}
+              onFocus={() => {
+                if (product.productName) handleProductSizeFocus();
               }}
-              disabled={!product.productName}
-              value={product.size || ''}
-              displayEmpty
-              renderValue={(selected: unknown) => (selected as string) || 'Select Size'}
-              onChange={(e: SelectChangeEvent<unknown>) => {
-                handleProductChange(index, 'size', e.target.value);
-                handleProductSizeClose();
-                // Move focus to quantity next if needed
+              onBlur={() => {
+                if (product.productName) handleProductSizeBlur();
               }}
-              sx={{
-                height: '35px',
-                '& .MuiSelect-root': { height: '35px' }
+              style={{
+                position: 'relative',
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                padding: '6px 8px',
+                cursor: product.productName ? 'pointer' : 'not-allowed',
+                minHeight: 35
               }}
             >
-              <MenuItem disabled value="">
-                <em>Select Size</em>
-              </MenuItem>
-              {productOptions
-                .find((p) => p.name === product.productName)
-                ?.sizes.map((size) => (
-                  <MenuItem key={size} value={size}>
-                    {size}
-                  </MenuItem>
-                ))}
-            </StyledSelect>
+              {product.size
+                ? product.size
+                : product.productName
+                ? 'Select Size'
+                : 'Please select Product first'}
+
+              {isSizeOpen && product.productName && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    background: '#fff',
+                    border: '1px solid #ddd',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    marginTop: 4,
+                    zIndex: 999
+                  }}
+                >
+                  {/* find available sizes for current productName */}
+                  {productOptions
+                    .find((p) => p.name === product.productName)
+                    ?.sizes.map((sz) => (
+                      <div
+                        key={sz}
+                        style={{
+                          padding: '6px',
+                          borderBottom: '1px solid #eee'
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleProductChange(index, 'size', sz);
+                          // find rate if needed
+                          const matchedOpt = productOptions.find(
+                            (po) => po.name === product.productName && po.sizes.includes(sz)
+                          );
+                          if (matchedOpt) {
+                            // you could do logic if needed
+                          }
+                          // close size dropdown
+                          const newState = [...productSizeOpen];
+                          newState[index] = false;
+                          setProductSizeOpen(newState);
+                          // focus quantity field
+                          setTimeout(() => {
+                            const qtyField = document.getElementById(`qtyField-${index}`);
+                            qtyField?.focus();
+                          }, 50);
+                        }}
+                      >
+                        {sz}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </Box>
 
           {/* Quantity */}
@@ -1039,6 +1067,7 @@ const Challan: React.FC = () => {
               label="Quantity"
               type="number"
               min={0}
+              id={`qtyField-${index}`}
               value={product.quantity}
               onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
               required
@@ -1208,7 +1237,6 @@ const Challan: React.FC = () => {
                         }
                       }
                     }}
-                    // If user clicks directly, text field is active. The logic to open dropdown is handled by the Paper below if there's data
                   />
                   {/* Autocomplete Paper */}
                   {customers.length > 0 && (
@@ -1308,7 +1336,7 @@ const Challan: React.FC = () => {
                       if (!date) return;
                       setFormData((prev) => ({ ...prev, date }));
                       setDatePickerOpen(false);
-                      // Move focus to next field => Site (open site dropdown)
+                      // Move focus to next field => site (open site dropdown)
                       setTimeout(() => setSiteSelectOpen(true), 50);
                     }}
                     onFocus={() => {
@@ -1318,56 +1346,74 @@ const Challan: React.FC = () => {
                     onClickOutside={() => setDatePickerOpen(false)}
                     onSelect={() => setDatePickerOpen(false)}
                     dateFormat="dd/MM/yyyy"
-                    className="form-control"
+                    className="form-control datepicker-custom "
                     placeholderText="Select date"
-                    style={{ width: '100%', height: '35px', padding: '6px 8px' }}
                   />
                 </Box>
               </Stack>
 
               {/* Row 2: Site Select, Site Address */}
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                {/* Site Select */}
+                {/* Site (MUI-based) */}
                 <Box flex={1} sx={{ minWidth: 180 }}>
                   <label
                     style={{ fontWeight: 500, marginBottom: '4px', display: 'inline-block' }}
                   >
                     Site
                   </label>
-                  <StyledSelect
-                    fullWidth
-                    open={siteSelectOpen}
-                    onOpen={() => setSiteSelectOpen(true)}
-                    onClose={() => setSiteSelectOpen(false)}
+                  <div
+                    style={{
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      minHeight: 35,
+                      position: 'relative'
+                    }}
+                    tabIndex={0}
                     onFocus={() => setSiteSelectOpen(true)}
-                    onClick={() => {
-                      if (!siteSelectOpen) setSiteSelectOpen(true);
-                    }}
-                    value={formData.siteName || ''}
-                    displayEmpty
-                    onChange={(e: SelectChangeEvent<unknown>) => {
-                      handleSiteChange(e.target.value as string);
-                      setSiteSelectOpen(false);
-                      // Move focus to site address
-                      setTimeout(() => {
-                        siteAddressRef.current?.focus();
-                      }, 50);
-                    }}
-                    renderValue={(val: unknown) => (val as string) || 'Select Site'}
-                    sx={{
-                      height: '35px',
-                      '& .MuiSelect-root': { height: '35px' }
+                    onBlur={() => {
+                      setTimeout(() => setSiteSelectOpen(false), 100);
                     }}
                   >
-                    <MenuItem disabled value="">
-                      <em>Select Site</em>
-                    </MenuItem>
-                    {sites.map((s) => (
-                      <MenuItem key={s.siteName} value={s.siteName}>
-                        {s.siteName}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
+                    {formData.siteName || 'Select Site'}
+                    {siteSelectOpen && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          background: '#fff',
+                          border: '1px solid #ddd',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          marginTop: 4,
+                          zIndex: 999
+                        }}
+                      >
+                        {sites.map((s) => (
+                          <div
+                            key={s.siteName}
+                            style={{
+                              padding: '6px',
+                              borderBottom: '1px solid #eee'
+                            }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              if (s.siteName) {
+                                handleSiteChange(s.siteName);
+                              }
+                              setSiteSelectOpen(false);
+                              setTimeout(() => {
+                                siteAddressRef.current?.focus();
+                              }, 50);
+                            }}
+                          >
+                            {s.siteName}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </Box>
 
                 {/* Site Address */}
@@ -1375,7 +1421,7 @@ const Challan: React.FC = () => {
                   <FormInput
                     name="siteAddress"
                     label="Site Address"
-                    inputRef={siteAddressRef}
+                    inputref={siteAddressRef}
                     value={formData.siteAddress}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, siteAddress: e.target.value }))
@@ -1395,7 +1441,7 @@ const Challan: React.FC = () => {
                     max={9999999}
                     value={formData.serviceCharge}
                     onChange={(e) => handleExtraCharge('serviceCharge', e.target.value)}
-                    inputRef={serviceChargeRef}
+                    inputref={serviceChargeRef}
                   />
                 </Box>
                 <Box flex={1}>
@@ -1407,7 +1453,7 @@ const Challan: React.FC = () => {
                     max={9999999}
                     value={formData.damageCharge}
                     onChange={(e) => handleExtraCharge('damageCharge', e.target.value)}
-                    inputRef={damageChargeRef}
+                    inputref={damageChargeRef}
                   />
                 </Box>
                 <Box flex={1}>
@@ -1418,7 +1464,7 @@ const Challan: React.FC = () => {
                     min={0}
                     value={formData.loading}
                     onChange={(e) => handleExtraCharge('loading', e.target.value)}
-                    inputRef={loadingRef}
+                    inputref={loadingRef}
                   />
                 </Box>
                 <Box flex={1}>
@@ -1429,7 +1475,7 @@ const Challan: React.FC = () => {
                     min={0}
                     value={formData.unloading}
                     onChange={(e) => handleExtraCharge('unloading', e.target.value)}
-                    inputRef={unloadingRef}
+                    inputref={unloadingRef}
                   />
                 </Box>
                 <Box flex={1}>
@@ -1447,7 +1493,7 @@ const Challan: React.FC = () => {
                         totalAmount: (prev.totalAmount || 0) - (prev.transportCharge || 0) + val
                       }));
                     }}
-                    inputRef={transportChargeRef}
+                    inputref={transportChargeRef}
                   />
                 </Box>
               </Stack>

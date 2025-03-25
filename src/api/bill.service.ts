@@ -99,6 +99,28 @@ console.log(params);
   clearPendingRequests() {
     this.pendingRequests.clear();
   }
+
+  sendBillViaWhatsapp(to: string, body: string, pdfBlob: Blob) {
+    const requestKey = this.createRequestKey('/whatsapp/send-message', { to });
+
+    const formData = new FormData();
+    formData.append('to', to.replace(/\D/g, ''));
+    formData.append('body', body);
+    formData.append('file', pdfBlob, `bill_${Date.now()}.pdf`);
+
+    return this.debounceRequest(requestKey, () =>
+      axiosInstance.post('/whatsapp/send-message', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      .then(response => response.data)
+      .catch(error => {
+        console.error('WhatsApp send error details:', error.response || error);
+        throw error;
+      })
+    );
+  }
 }
 
 export const billService = new BillService();

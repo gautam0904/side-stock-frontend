@@ -53,7 +53,7 @@ import { styled } from '@mui/material/styles';
 import PhotoIcon from '@mui/icons-material/Photo';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
-import { ICutomer, Iprizefix, ISite } from 'src/DTO/customer.dto';
+import { ICustomer, ISite } from 'src/DTO/customer.dto';
 import CommonDataTable from '../../components/dataTable/dataTable.component';
 import { customerService } from '../../api/customer.service';
 import { debug } from 'console';
@@ -65,6 +65,14 @@ import DescriptionIcon from '@mui/icons-material/Description'
 import PhoneIcon from '@mui/icons-material/Phone'
 import NumbersIcon from '@mui/icons-material/Numbers'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import SendIcon from '@mui/icons-material/Send';
+import ShareIcon from '@mui/icons-material/Share';
+import html2canvas from 'html2canvas';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 
 declare module 'jspdf' {
@@ -187,23 +195,25 @@ const Bill = () => {
     const gridRef = useRef<any>(null);
     const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
     const [productOptions, setProductOptions] = useState<Array<any>>([]);
-    const [customers, setCustomers] = useState<ICutomer[]>([])
+    const [customers, setCustomers] = useState<ICustomer[]>([])
     const [searchQuery, setSearchQuery] = useState('');
+    const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
+    const [whatsappNumber, setWhatsappNumber] = useState('');
+    const [whatsappMessage, setWhatsappMessage] = useState('');
+    const [whatsappLoading, setWhatsappLoading] = useState(false);
+    const [whatsappStatus, setWhatsappStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [whatsappError, setWhatsappError] = useState('');
+    const billPdfRef = useRef(null);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     useEffect(() => {
         const fetchCustomer = async () => {
             try {
                 const response = await customerService.getAllCustomers();
                 // Group products by name with their available sizes
-                const groupedProducts = response.data.products.reduce((acc: any[], product: ICutomer) => {
-                    // const existing = acc.find(p => p.customerName === product.customerName);
-                    // if (existing) {
-                    //     if (!existing.sites.includes(product.size)) {
-                    //         existing.sizes.push(product.size);
-                    //     }
-                    // } else {
+                const groupedProducts = response.data.products.reduce((acc: any[], product: ICustomer) => {
                     acc.push({ customerName: product.customerName, sites: product.sites });
-                    // }
                     return acc;
                 }, []);
                 setProductOptions(groupedProducts);
@@ -213,6 +223,14 @@ const Bill = () => {
         };
         fetchCustomer();
     }, []);
+
+    useEffect(() => {
+        if (billData?.mobileNumber) {
+            // Format the number (remove any non-digits)
+            const formattedNumber = billData.mobileNumber.replace(/\D/g, '');
+            setWhatsappNumber(formattedNumber);
+        }
+    }, [billData]);
 
     const handleClose = () => {
         setOpen(false);
@@ -247,10 +265,6 @@ const Bill = () => {
     const CustomToolbar = () => {
         const handleExport = (type: string) => {
             if (type === 'pdf') {
-                // const visibleColumns = columns.filter(col => {
-                //     return columnVisibility[col.field] !== false && col.field !== 'actions';
-                // });
-                // downloadPDF(visibleColumns);
             }
         };
 
@@ -496,7 +510,7 @@ const Bill = () => {
             try {
                 const response = await customerService.getCustomerByName(query);
                 let data = await response.data.customers;
-                data = data.map((c: ICutomer) => {
+                data = data.map((c: ICustomer) => {
                     return {
                         ...c,
                         customerName: c.customerName?.replace(/['"]/g, "").trim()
@@ -520,31 +534,11 @@ const Bill = () => {
 
 
     // Handle customer selection
-    const handleCustomerSelect = (customer: ICutomer) => {
+    const handleCustomerSelect = (customer: ICustomer) => {
         setSearchQuery(customer.customerName as string);
         setCustomers([]);
 
         setProductOptions(customer.sites || []);
-
-        // setProductOptions((prev) => {
-        //     const groupedProducts = customer.prizefix?.reduce((acc: any[], product: Iprizefix) => {
-        //         const existing = acc.find(p => p.name === product.productName);
-        //         if (existing) {
-        //             if (!existing.sizes.includes(product.size)) {
-        //                 existing.sizes.push(product.size);
-        //                 existing.rate = product.rate
-        //             }
-        //         } else {
-        //             acc.push({ name: product.productName, sizes: [product.size] });
-        //         }
-        //         return acc;
-        //     }, []) || []; // Use empty array as fallback if groupedProducts is undefined
-
-        //     return [
-        //         ...prev,
-        //         ...groupedProducts
-        //     ];
-        // });
 
         setFormData((prev) => {
 
@@ -624,6 +618,274 @@ const Bill = () => {
             boxShadow: '0px 8px 30px rgba(0, 0, 0, 0.15)',
         },
     });
+
+    // Generate a Sandbox-compatible message
+    const getSandboxMessage = () => {
+        if (!billData) return '';
+        
+        // Very simple message for Sandbox compatibility - note the simple format
+        return `Your bill of ₹${
+            typeof billData.totalPayment === 'number' ? 
+            billData.totalPayment.toFixed(2) : 
+            billData.totalPayment || '0'
+        } is ready for ${billData.siteName || 'your site'}.`;
+    };
+
+    // Generate PDF optimized for WhatsApp
+    const generateWhatsAppPDF = async () => {
+        if (!billData || !billPdfRef.current) {
+            toast.error('Bill data not available');
+            return null;
+        }
+        
+        try {
+            toast.loading('Preparing bill...');
+            
+            const canvas = await html2canvas(billPdfRef.current, {
+                scale: 2, 
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            });
+            
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+            
+            const imgWidth = pdf.internal.pageSize.getWidth();
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            pdf.addImage(
+                canvas.toDataURL('image/jpeg', 0.95), 
+                'JPEG', 
+                0, 0, 
+                imgWidth, 
+                imgHeight
+            );
+            
+            toast.dismiss();
+            return pdf.output('blob');
+        } catch (error) {
+            console.error('PDF error:', error);
+            toast.dismiss();
+            toast.error('Failed to generate PDF');
+            return null;
+        }
+    };
+
+    // Send WhatsApp message
+    const handleSendWhatsapp = async () => {
+        // Validate phone number
+        if (!whatsappNumber || whatsappNumber.length < 10) {
+            toast.error('Please enter a valid WhatsApp number');
+            return;
+        }
+        
+        setWhatsappLoading(true);
+        setWhatsappStatus('loading');
+        setWhatsappError('');
+        
+        try {
+            // Generate PDF
+            const pdfBlob = await generateWhatsAppPDF();
+            if (!pdfBlob) {
+                throw new Error('Could not create bill PDF');
+            }
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('to', whatsappNumber);
+            formData.append('body', whatsappMessage || getSandboxMessage());
+            formData.append('file', pdfBlob, `bill_${billData?.billNumber || Date.now()}.pdf`);
+            
+            toast.loading('Sending WhatsApp message...');
+            
+            // Use billService instead of fetch - this ensures proper API URL is used
+            const response = await billService.sendBillViaWhatsapp(
+                whatsappNumber,
+                whatsappMessage || getSandboxMessage(),
+                pdfBlob
+            );
+            
+            toast.dismiss();
+            
+            setWhatsappStatus('success');
+            toast.success('Message sent via WhatsApp!');
+            
+            // Reset after delay
+            setTimeout(() => {
+                setWhatsappDialogOpen(false);
+                setWhatsappStatus('idle');
+            }, 3000);
+        } catch (error) {
+            console.error('WhatsApp error:', error);
+            toast.dismiss();
+            toast.error('Failed to send WhatsApp message. Please check the console for details.');
+            setWhatsappStatus('error');
+            setWhatsappError('API connection failed. Please verify your backend is running.');
+        } finally {
+            setWhatsappLoading(false);
+        }
+    };
+
+    // WhatsApp Dialog Component
+    const WhatsAppDialog = () => (
+        <Dialog 
+            open={whatsappDialogOpen} 
+            onClose={() => !whatsappLoading && setWhatsappDialogOpen(false)}
+            maxWidth="sm"
+            fullWidth
+        >
+            <Box sx={{ 
+                bgcolor: whatsappStatus === 'error' ? '#f44336' : '#128C7E', 
+                p: 2, 
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+            }}>
+                {whatsappStatus === 'error' ? <ErrorOutlineIcon /> : <WhatsAppIcon />}
+                <Typography variant="h6">
+                    {whatsappStatus === 'error' ? 'Error Sending Message' : 'Share Bill via WhatsApp'}
+                </Typography>
+            </Box>
+            
+            <DialogContent sx={{ pt: 3 }}>
+                {whatsappStatus === 'success' ? (
+                    <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        py: 4 
+                    }}>
+                        <CheckCircleIcon sx={{ fontSize: 60, color: 'success.main', mb: 2 }} />
+                        <Typography variant="h6" align="center">
+                            Bill sent successfully!
+                        </Typography>
+                        <Typography variant="body2" align="center" color="text.secondary" sx={{ mt: 1 }}>
+                            The bill has been sent to {whatsappNumber}
+                        </Typography>
+                    </Box>
+                ) : whatsappStatus === 'error' ? (
+                    <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        py: 4 
+                    }}>
+                        <ErrorOutlineIcon sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
+                        <Typography variant="h6" align="center">
+                            Failed to send message
+                        </Typography>
+                        <Typography variant="body2" align="center" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
+                            {whatsappError || 'There was an error sending the WhatsApp message'}
+                        </Typography>
+                        <Button 
+                            variant="outlined" 
+                            color="primary" 
+                            onClick={() => {
+                                setWhatsappStatus('idle');
+                                setWhatsappError('');
+                            }}
+                        >
+                            Try Again
+                        </Button>
+                    </Box>
+                ) : (
+                    <>
+                        <Box sx={{ mb: 3 }}>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                Bill will be sent via WhatsApp. For Twilio Sandbox to work:
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'warning.main', my: 1 }}>
+                                {/* Recipient must first text "join {process.env.TWILIO_SANDBOX_CODE || 'your-sandbox-code'}" to {process.env.TWILIO_WHATSAPP_NUMBER || 'your Twilio number'} */}
+                            </Typography>
+                        </Box>
+                        
+                        <TextField
+                            label="WhatsApp Number"
+                            fullWidth
+                            value={whatsappNumber}
+                            onChange={(e) => setWhatsappNumber(e.target.value)}
+                            placeholder="e.g., 9123456789"
+                            variant="outlined"
+                            margin="normal"
+                            required
+                            InputProps={{
+                                startAdornment: (
+                                    <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>+91</Box>
+                                )
+                            }}
+                            disabled={whatsappLoading}
+                        />
+                        
+                        <TextField
+                            label="Message"
+                            fullWidth
+                            multiline
+                            rows={3}
+                            value={whatsappMessage || getSandboxMessage()}
+                            onChange={(e) => setWhatsappMessage(e.target.value)}
+                            placeholder="Keep message simple for Sandbox compatibility"
+                            variant="outlined"
+                            margin="normal"
+                            disabled={whatsappLoading}
+                            helperText="For Sandbox: Keep messages short and simple"
+                        />
+                        
+                        <Box sx={{ 
+                            mt: 2, 
+                            p: 2, 
+                            bgcolor: '#fffde7', 
+                            borderRadius: 1,
+                            border: '1px solid #ffc107'
+                        }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#ff6d00', mb: 1 }}>
+                                WhatsApp Sandbox Limitations
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                                    <li>Recipient must first send a join message to Twilio's number</li>
+                                    <li>PDFs may be sent as links rather than attachments in testing mode</li>
+                                    <li>Only pre-approved message templates work reliably</li>
+                                    <li>Must send a message within the last 24 hours</li>
+                                </ul>
+                            </Typography>
+                        </Box>
+                    </>
+                )}
+            </DialogContent>
+            
+            {whatsappStatus !== 'success' && whatsappStatus !== 'error' && (
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button 
+                        onClick={() => !whatsappLoading && setWhatsappDialogOpen(false)} 
+                        color="inherit"
+                        disabled={whatsappLoading}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSendWhatsapp}
+                        variant="contained"
+                        disabled={whatsappLoading || !whatsappNumber}
+                        startIcon={whatsappLoading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+                        sx={{ 
+                            bgcolor: '#128C7E',
+                            '&:hover': {
+                                bgcolor: '#075E54'
+                            }
+                        }}
+                    >
+                        {whatsappLoading ? 'Sending...' : 'Send'}
+                    </Button>
+                </DialogActions>
+            )}
+        </Dialog>
+    );
 
     return (
         <Box sx={{ p: 2 }}>
@@ -732,7 +994,7 @@ const Bill = () => {
                                                 backgroundColor: 'var(--primary-color)',
                                             }
                                         }}
-                                        onClick={() => handleSiteSelect(site.siteName)}
+                                        onClick={() => handleSiteSelect(site.siteName ?? '')}
                                     >
                                         {site.siteName}
                                     </MenuItem>
@@ -792,26 +1054,36 @@ const Bill = () => {
                 </Box>
             </Form>
             {billData ? (
-                <Box sx={{
-                    p: 3,
-                    margin: '1.5rem auto',
-                    backgroundColor: 'white',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    '&:before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '4px',
-                        height: '100%',
-                        backgroundColor: '#6366f1'
-                    }
-                }}>
-                    {/* Header */}
-                    <Box sx={{ mb: 3 }}>
+                <Box 
+                    ref={billPdfRef}
+                    sx={{
+                        p: 3,
+                        margin: '1.5rem auto',
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&:before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '4px',
+                            height: '100%',
+                            backgroundColor: '#6366f1'
+                        }
+                    }}
+                >
+                    {/* Header with WhatsApp share button */}
+                    <Box sx={{ 
+                        mb: 3,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 2
+                    }}>
                         <Typography variant="h5" sx={{
                             fontWeight: '600',
                             color: '#1f2937',
@@ -822,10 +1094,32 @@ const Bill = () => {
                             <ReceiptLongIcon sx={{ color: '#6366f1', fontSize: '1.5rem' }} />
                             Bill Details
                         </Typography>
-                        <Divider sx={{ borderColor: '#e5e7eb' }} />
+                        
+                        <Button
+                            variant="contained"
+                            startIcon={<WhatsAppIcon />}
+                            onClick={() => {
+                                setWhatsappMessage(getSandboxMessage());
+                                setWhatsappStatus('idle');
+                                setWhatsappError('');
+                                setWhatsappDialogOpen(true);
+                            }}
+                            sx={{
+                                bgcolor: '#128C7E',
+                                '&:hover': {
+                                    bgcolor: '#075E54'
+                                },
+                                borderRadius: '8px',
+                                textTransform: 'none',
+                                fontWeight: 500
+                            }}
+                        >
+                            Share via WhatsApp
+                        </Button>
                     </Box>
-
-                    {/* Bill Summary */}
+                    <Divider sx={{ borderColor: '#e5e7eb' }} />
+                    
+                    {/* Rest of your bill details content */}
                     <Grid container spacing={2} sx={{ mb: 3 }}>
                         <Grid item xs={4}>
                             <DetailItem label="Bill Name" value={billData.billName} icon={<DescriptionIcon />} />
@@ -853,9 +1147,6 @@ const Bill = () => {
                             </Box>
                         </Grid>
                     </Grid>
-
-                    {/* Address Section */}
-
 
                     {/* Challans Section */}
                     <Box sx={{ mb: 3 }}>
@@ -905,23 +1196,9 @@ const Bill = () => {
                         </Typography>
                     </Box>
                 </Box>
-            ) : null
-            }
+            ) : null}
 
             <Box>
-                {/* {bill?.map((billMonth: any, idx: any) => (
-                    <Paper sx={{ width: '100%' }} key={idx}>
-                        <CommonDataTable
-                            loading={false}
-                            rows={{
-                                products: billMonth.products,
-                                year: billMonth.year,
-                                month: billMonth.month,
-                                totalAmount: billMonth.totalAmount
-                            }}
-                        />
-                    </Paper>
-                ))} */}
                 {billData?.monthData?.map((monthEntry: any) => (
                     <CommonDataTable
                         key={`${monthEntry.year}-${monthEntry.month}`}
@@ -933,43 +1210,10 @@ const Bill = () => {
                         loading={false}
                     />
                 ))}
-                {/* {
-        // Loop over each month in the bill array and display a DataGrid for each one
-        bill?.map((billMonth: any, idx: any) => (
-            <Paper sx={{ height: 600, width: '100%', marginBottom: 2 }} key={idx}>
-                <CommonDataTable
-                    loading={false}
-                    rows={{
-                        year: billMonth.year,
-                        month: billMonth.month,
-                        totalAmount: billMonth.totalAmount,
-                        products: billMonth.products
-                    }}
-                />
-            </Paper>
-        ))
-    }
-
-{/* {
-    bill?.map((billMonth: any, idx: any) => (
-        <Paper sx={{ height: 600, width: '100%', marginBottom: 2 }} key={idx}>
-            <CommonDataTable
-                loading={false}
-                rows={{
-                    products: billMonth.products,
-                    year: billMonth.year,
-                    month: billMonth.month,
-                    totalAmount: billMonth.totalAmount
-                }}
-            />
-        </Paper>
-    ))
-} */}
-
             </Box>
 
-
-
+            {/* Render WhatsApp dialog */}
+            <WhatsAppDialog />
         </Box>
     );
 };
