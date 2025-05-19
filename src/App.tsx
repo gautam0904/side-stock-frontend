@@ -8,6 +8,7 @@ import { Toaster } from 'react-hot-toast';
 import Navbar from './components/navbar/navbar.components.tsx';
 import { GstProvider } from './contexts/gst.contexts';
 import { SidebarProvider } from './contexts/sidebar.context';
+import { NavigationProvider } from './contexts/navigation.context'; // <-- Import NavigationProvider
 import './App.css';
 
 const NotFound = React.lazy(() => import('./components/notFound/notFound.component.tsx'));
@@ -30,24 +31,27 @@ const App = () => {
       <AuthProvider>
         <SidebarProvider>
           <ErrorBoundary>
+            {/* Wrap the NavigationProvider inside Router */}
             <Router>
-              <Suspense fallback={''}>
-                <Toaster position="top-right" />
-                
-                {/* Conditionally render Navbar */}
-                <ConditionalNavbar />
-                
-                <main className="main-content">
-                  <Routes>
-                    {AppRoutes}
-                    <Route
-                      path="/"
-                      element={<ProtectedRoute children={<Dashboard />} />}
-                    />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-              </Suspense>
+              <NavigationProvider> {/* Now inside Router */}
+                <Suspense fallback={''}>
+                  <Toaster position="top-right" />
+                  
+                  {/* Conditionally render Navbar */}
+                  <ConditionalNavbar />
+                  
+                  <main className="main-content">
+                    <Routes>
+                      {AppRoutes}
+                      <Route
+                        path="/"
+                        element={<ProtectedRoute children={<Dashboard />} />}
+                      />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </main>
+                </Suspense>
+              </NavigationProvider>
             </Router>
           </ErrorBoundary>
         </SidebarProvider>
