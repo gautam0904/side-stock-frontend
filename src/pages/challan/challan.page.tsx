@@ -224,6 +224,12 @@ const Challan: React.FC = () => {
   // Suppose you had some logic for "Return" stock quantity:
   const [customerQut, setCustomerQut] = useState<string>(''); // example usage
 
+  const productRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+
+  const [highlightedSizeIndex, setHighlightedSizeIndex] = useState<number | null>(null);
+
   // ---------- Table Columns ----------
   const columns: GridColDef[] = [
     {
@@ -417,6 +423,15 @@ const Challan: React.FC = () => {
     }));
     setProductNameOpen((prevOpen) => [...prevOpen, false]);
     setProductSizeOpen((prevOpen) => [...prevOpen, false]);
+
+    setTimeout(() => {
+      const lastIndex = formData.products.length; // new product is at this index
+      const el = productRefs.current[lastIndex];
+      if (el) {
+        el.focus(); // focus custom div
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   const removeProduct = (index: number) => {
@@ -998,8 +1013,7 @@ const Challan: React.FC = () => {
             </label>
             <div
               tabIndex={0}
-              onFocus={handleProductNameFocus}
-              onBlur={handleProductNameBlur}
+              ref={(el) => (productRefs.current[index] = el)}
               style={{
                 position: 'relative',
                 border: '1px solid #ccc',
@@ -1007,6 +1021,54 @@ const Challan: React.FC = () => {
                 padding: '6px 8px',
                 cursor: 'pointer',
                 minHeight: 35
+              }}
+              onFocus={() => {
+                handleProductNameFocus();
+                setHighlightedIndex(0);
+              }}
+              onBlur={() => {
+                handleProductNameBlur();
+                setHighlightedIndex(null);
+              }}
+              onKeyDown={(e) => {
+                if (!isPNameOpen) return;
+
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setHighlightedIndex((prev) =>
+                    prev === null || prev === productOptions.length - 1 ? 0 : prev + 1
+                  );
+                }
+
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setHighlightedIndex((prev) =>
+                    prev === null || prev === 0 ? productOptions.length - 1 : prev - 1
+                  );
+                }
+
+                if (e.key === 'Enter' && highlightedIndex !== null) {
+                  e.preventDefault();
+                  const option = productOptions[highlightedIndex];
+                  handleProductChange(index, 'productName', option.name);
+                  handleProductChange(index, 'size', '');
+
+                  const newState = [...productNameOpen];
+                  newState[index] = false;
+                  setProductNameOpen(newState);
+
+                  setTimeout(() => {
+                    const sizeDiv = document.getElementById(`sizeDiv-${index}`);
+                    sizeDiv?.focus();
+                  }, 50);
+                }
+
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  const newState = [...productNameOpen];
+                  newState[index] = false;
+                  setProductNameOpen(newState);
+                }
               }}
             >
               {product.productName || <span style={{ color: '#888' }}>Select Product</span>}
@@ -1029,12 +1091,13 @@ const Challan: React.FC = () => {
                       <em>No products found</em>
                     </div>
                   )}
-                  {productOptions.map((option) => (
+                  {productOptions.map((option, optIdx) => (
                     <div
                       key={option.name}
                       style={{
                         padding: '6px',
-                        borderBottom: '1px solid #eee'
+                        borderBottom: '1px solid #eee',
+                        backgroundColor: optIdx === highlightedIndex ? '#f0f0f0' : undefined
                       }}
                       onMouseDown={(e) => {
                         e.preventDefault();
@@ -1069,10 +1132,58 @@ const Challan: React.FC = () => {
               id={`sizeDiv-${index}`}
               tabIndex={product.productName ? 0 : -1}
               onFocus={() => {
-                if (product.productName) handleProductSizeFocus();
+                if (product.productName) {
+                  handleProductSizeFocus();
+                  setHighlightedSizeIndex(0);
+                }
               }}
               onBlur={() => {
-                if (product.productName) handleProductSizeBlur();
+                if (product.productName) {
+                  handleProductSizeBlur();
+                  setHighlightedSizeIndex(null);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (!isSizeOpen) return;
+
+                const sizes = productOptions.find(p => p.name === product.productName)?.sizes || [];
+
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setHighlightedSizeIndex((prev) =>
+                    prev === null || prev === sizes.length - 1 ? 0 : prev + 1
+                  );
+                }
+
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setHighlightedSizeIndex((prev) =>
+                    prev === null || prev === 0 ? sizes.length - 1 : prev - 1
+                  );
+                }
+
+                if (e.key === 'Enter' && highlightedSizeIndex !== null) {
+                  e.preventDefault();
+                  const selectedSize = sizes[highlightedSizeIndex];
+
+                  handleProductChange(index, 'size', selectedSize);
+
+                  const newState = [...productSizeOpen];
+                  newState[index] = false;
+                  setProductSizeOpen(newState);
+
+                  setTimeout(() => {
+                    const qtyField = document.getElementById(`qtyField-${index}`);
+                    qtyField?.focus();
+                  }, 50);
+                }
+
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  const newState = [...productSizeOpen];
+                  newState[index] = false;
+                  setProductSizeOpen(newState);
+                }
               }}
               style={{
                 position: 'relative',
@@ -1105,12 +1216,13 @@ const Challan: React.FC = () => {
                   {/* find available sizes for current productName */}
                   {productOptions
                     .find((p) => p.name === product.productName)
-                    ?.sizes.map((sz) => (
+                    ?.sizes.map((sz,szIdx) => (
                       <div
                         key={sz}
                         style={{
                           padding: '6px',
-                          borderBottom: '1px solid #eee'
+                          borderBottom: '1px solid #eee',
+                          backgroundColor: szIdx === highlightedSizeIndex ? '#f0f0f0' : undefined
                         }}
                         onMouseDown={(e) => {
                           e.preventDefault();
@@ -1505,58 +1617,58 @@ const Challan: React.FC = () => {
 
               {/* Row 3: Service, Damage, Loading, Unloading, Transport */}
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              {formData.type === 'Delivery' ? 
-                <Box flex={1}>
-                  <FormInput
-                    name="serviceCharge"
-                    label="Service Charge"
-                    type="number"
-                    min={0}
-                    max={9999999}
-                    value={formData.serviceCharge}
-                    onChange={(e) => handleExtraCharge('serviceCharge', e.target.value)}
-                    inputref={serviceChargeRef}
-                  />
-                </Box>
-                :
-                <Box flex={1}>
-                  <FormInput
-                    name="damageCharge"
-                    label="Damage Charge"
-                    type="number"
-                    min={0}
-                    max={9999999}
-                    value={formData.damageCharge}
-                    onChange={(e) => handleExtraCharge('damageCharge', e.target.value)}
-                    inputref={damageChargeRef}
-                  />
-                </Box>
-}
-                {formData.type === 'Delivery' ? 
-                <Box flex={1}>
-                  <FormInput
-                    name="loading"
-                    label="Loading"
-                    type="number"
-                    min={0}
-                    value={formData.loading}
-                    onChange={(e) => handleExtraCharge('loading', e.target.value)}
-                    inputref={loadingRef}
-                  />
-                </Box>
-                :
-                <Box flex={1}>
-                  <FormInput
-                    name="unloading"
-                    label="Unloading"
-                    type="number"
-                    min={0}
-                    value={formData.unloading}
-                    onChange={(e) => handleExtraCharge('unloading', e.target.value)}
-                    inputref={unloadingRef}
-                  />
-                </Box>
-}
+                {formData.type === 'Delivery' ?
+                  <Box flex={1}>
+                    <FormInput
+                      name="serviceCharge"
+                      label="Service Charge"
+                      type="number"
+                      min={0}
+                      max={9999999}
+                      value={formData.serviceCharge}
+                      onChange={(e) => handleExtraCharge('serviceCharge', e.target.value)}
+                      inputref={serviceChargeRef}
+                    />
+                  </Box>
+                  :
+                  <Box flex={1}>
+                    <FormInput
+                      name="damageCharge"
+                      label="Damage Charge"
+                      type="number"
+                      min={0}
+                      max={9999999}
+                      value={formData.damageCharge}
+                      onChange={(e) => handleExtraCharge('damageCharge', e.target.value)}
+                      inputref={damageChargeRef}
+                    />
+                  </Box>
+                }
+                {formData.type === 'Delivery' ?
+                  <Box flex={1}>
+                    <FormInput
+                      name="loading"
+                      label="Loading"
+                      type="number"
+                      min={0}
+                      value={formData.loading}
+                      onChange={(e) => handleExtraCharge('loading', e.target.value)}
+                      inputref={loadingRef}
+                    />
+                  </Box>
+                  :
+                  <Box flex={1}>
+                    <FormInput
+                      name="unloading"
+                      label="Unloading"
+                      type="number"
+                      min={0}
+                      value={formData.unloading}
+                      onChange={(e) => handleExtraCharge('unloading', e.target.value)}
+                      inputref={unloadingRef}
+                    />
+                  </Box>
+                }
               </Stack>
 
               {/* Products Section */}
