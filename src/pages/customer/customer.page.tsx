@@ -53,6 +53,7 @@ import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
 import AddAPhotoIcon from '@mui/icons-material/AddAPhoto';
 import { debounce } from 'lodash';
+import { userPreferencesService } from '../../api/userPreferences.service';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -180,6 +181,107 @@ const Customer = () => {
   });
   const gridRef = useRef<any>(null);
   const [columnVisibility, setColumnVisibility] = useState<{ [key: string]: boolean }>({});
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
+
+  // Add this state for tracking selected option index
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(-1);
+
+  // Add these states for product selection
+  const [selectedProductOptionIndex, setSelectedProductOptionIndex] = useState<number>(-1);
+  const [selectedSizeOptionIndex, setSelectedSizeOptionIndex] = useState<number>(-1);
+
+  // Add a ref for the products container
+  const productsContainerRef = useRef<HTMLDivElement>(null);
+  const [lastAddedProductIndex, setLastAddedProductIndex] = useState<number>(-1);
+
+  useEffect(() => {
+    const loadUserPreferences = async () => {
+      try {
+        setIsLoadingPreferences(true);
+        const preferences = await userPreferencesService.getPreferenceByKey('customer');
+        
+        if (preferences?.data?.columnVisibility) {
+          // If we have preferences from backend, use them
+          setColumnVisibility(preferences.data.columnVisibility);
+        } else {
+          // Only set default values if no preferences exist
+          const defaultVisibility = {
+            GSTnumber: true,
+            aadharNo: true,
+            actions: true,
+            customerName: true,
+            expandButton: true,
+            mobileNumber: true,
+            no: true,
+            pancardNo: true,
+            partnerMobileNumber: true,
+            partnerName: true,
+            reference: true,
+            referenceMobileNumber: true,
+            residentAddress: true
+          };
+          
+          // Save default preferences to backend
+          await userPreferencesService.savePreferenceByKey('customer', defaultVisibility);
+          setColumnVisibility(defaultVisibility);
+        }
+      } catch (error) {
+        console.error('Error loading user preferences:', error);
+        // Fallback to localStorage if backend fails
+        try {
+          const savedVisibility = localStorage.getItem('customerColumnVisibility');
+          if (savedVisibility) {
+            setColumnVisibility(JSON.parse(savedVisibility));
+          } else {
+            // Set default visibility if nothing in localStorage
+            setColumnVisibility({
+              GSTnumber: true,
+              aadharNo: true,
+              actions: true,
+              customerName: true,
+              expandButton: true,
+              mobileNumber: true,
+              no: true,
+              pancardNo: true,
+              partnerMobileNumber: true,
+              partnerName: true,
+              reference: true,
+              referenceMobileNumber: true,
+              residentAddress: true
+            });
+          }
+        } catch (localError) {
+          console.error('Error loading from localStorage:', localError);
+        }
+      } finally {
+        setIsLoadingPreferences(false);
+      }
+    };
+
+    loadUserPreferences();
+  }, []);
+
+  const saveColumnVisibility = async (newVisibility: { [key: string]: boolean }) => {
+    try {
+      // Save to backend
+      await userPreferencesService.savePreferenceByKey('customer', newVisibility);
+      // Update local state
+      setColumnVisibility(newVisibility);
+      // Backup to localStorage
+      localStorage.setItem('customerColumnVisibility', JSON.stringify(newVisibility));
+    } catch (error) {
+      console.error('Error saving user preferences:', error);
+      toast.error('Failed to save to server, using localStorage instead');
+      // Fallback to localStorage
+      try {
+        localStorage.setItem('customerColumnVisibility', JSON.stringify(newVisibility));
+        setColumnVisibility(newVisibility);
+      } catch (localError) {
+        console.error('Error saving to localStorage:', localError);
+        toast.error('Failed to save column preferences');
+      }
+    }
+  };
 
   // ---------- For searching Customer Name (autocomplete) -----------
   const [searchQuery, setSearchQuery] = useState('');
@@ -240,9 +342,10 @@ const Customer = () => {
       width: 60,
       sortable: false,
       renderCell: (params: GridRenderCellParams) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+        <Box className={'action-div'} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, paddingRight: 1 }}>
           <EditIcon
             fontSize="small"
+            sx={{ color: 'var(--primary-color)' }}
             onClick={(e) => {
               e.stopPropagation();
               handleEditClick(params.row);
@@ -308,6 +411,7 @@ const Customer = () => {
   const handleCustomerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
+    setSelectedOptionIndex(-1); // Reset selected index when search changes
     debounceFetchCustomers(query);
   };
 
@@ -338,6 +442,7 @@ const Customer = () => {
     setSelectedCustomer(cust as ICutomer);
     setSearchQuery(cust.customerName || '');
     setCustomers([]);
+    setSelectedOptionIndex(-1); // Reset selected index after selection
 
     setFormData((prev) => {
       const updatedForm = {
@@ -499,7 +604,7 @@ const Customer = () => {
     } catch (error: any) {
       toast.error(
         error.response?.data?.message ||
-          `Failed to ${isEditMode ? 'update' : 'add'} customer`
+        `Failed to ${isEditMode ? 'update' : 'add'} customer`
       );
     } finally {
       setLoading(false);
@@ -551,6 +656,7 @@ const Customer = () => {
       GSTnumber: cust.GSTnumber ?? '',
       sites: cust.sites ?? []
     });
+    setSearchQuery(cust.customerName || '');
     setIsEditMode(true);
     setOpen(true);
   };
@@ -919,46 +1025,16 @@ const Customer = () => {
     }
   };
 
-  const PhotoUploadButton = ({
-    field,
-    icon,
-    label
-  }: {
-    field: 'aadharPhoto' | 'panCardPhoto' | 'customerPhoto';
-    icon: React.ReactNode;
-    label: string;
-  }) => (
-    <Box flex={1}>
-      <input
-        type="file"
-        accept="image/*"
-        id={`${field}-upload`}
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            handlePhotoUpload(field, file);
-          }
-        }}
-      />
-      <label htmlFor={`${field}-upload`}>
-        <Button
-          component="span"
-          startIcon={icon}
-          sx={{
-            mt: 2,
-            bgcolor: '#7b4eff',
-            color: 'white',
-            '&:hover': {
-              bgcolor: '#6a3dd9'
-            }
-          }}
-        >
-          {label}
-        </Button>
-      </label>
-    </Box>
-  );
+  // Add these keyboard navigation handlers
+  const handleKeyDown = (e: React.KeyboardEvent, nextFieldId: string) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      const nextField = document.getElementById(nextFieldId);
+      if (nextField) {
+        nextField.focus();
+      }
+    }
+  };
 
   // --------------- Product & Site Management ---------------
   const handleProductChange = (
@@ -972,28 +1048,30 @@ const Customer = () => {
       sites: (prev.sites || []).map((site, i) =>
         i === siteIndex
           ? {
-              ...site,
-              prizefix: site.prizefix.map((product, j) =>
-                j === productIndex ? { ...product, [field]: value } : product
-              )
-            }
+            ...site,
+            prizefix: site.prizefix.map((product, j) =>
+              j === productIndex ? { ...product, [field]: value } : product
+            )
+          }
           : site
       )
     }));
   };
 
   const addProduct = (siteIndex: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      sites: (prev.sites || []).map((site, i) =>
-        i === siteIndex
-          ? {
-              ...site,
-              prizefix: [...site.prizefix, { productName: '', size: '', rate: 0 }]
-            }
-          : site
-      )
-    }));
+    setFormData((prev) => {
+      const newSites = [...(prev.sites || [])];
+      const currentSite = newSites[siteIndex];
+      if (currentSite) {
+        const newIndex = (currentSite.prizefix?.length || 0);
+        currentSite.prizefix = [
+          ...(currentSite.prizefix || []),
+          { productName: '', size: '', rate: 0 }
+        ];
+        setLastAddedProductIndex(newIndex);
+      }
+      return { ...prev, sites: newSites };
+    });
   };
 
   const removeProduct = (siteIndex: number, productIndex: number) => {
@@ -1002,9 +1080,9 @@ const Customer = () => {
       sites: (prev.sites || []).map((site, i) =>
         i === siteIndex
           ? {
-              ...site,
-              prizefix: site.prizefix.filter((_, j) => j !== productIndex)
-            }
+            ...site,
+            prizefix: site.prizefix.filter((_, j) => j !== productIndex)
+          }
           : site
       )
     }));
@@ -1068,7 +1146,454 @@ const Customer = () => {
     setShowSiteForm(false);
   };
 
-  // --------------- Render the site selection area ---------------
+  // ---------- ProductName custom dropdown ----------
+  const handleProductNameFocus = (key: string) => {
+    setOpenProductNameDropdown((prev) => ({ ...prev, [key]: true }));
+  };
+  const handleProductNameBlur = (key: string) => {
+    setTimeout(() => {
+      setOpenProductNameDropdown((prev) => ({ ...prev, [key]: false }));
+    }, 100);
+  };
+
+  // ---------- Size custom dropdown ----------
+  const handleSizeFocus = (key: string) => {
+    setOpenSizeDropdown((prev) => ({ ...prev, [key]: true }));
+  };
+  const handleSizeBlur = (key: string) => {
+    setTimeout(() => {
+      setOpenSizeDropdown((prev) => ({ ...prev, [key]: false }));
+    }, 100);
+  };
+
+  // --------------- Render the product list for the currently selected site ---------------
+  const renderProductsForSite = () => {
+    const currentSite = formData.sites?.[selectedSiteIndex];
+    if (!currentSite) return null;
+
+    // Collect unique product names:
+    const productNames = Array.from(new Set(products?.map((p) => p.productName) || []));
+    // Helper for sizes:
+    const getSizesForProduct = (name: string | undefined) => {
+      if (!name) return [];
+      return products
+        ?.filter((p) => p.productName === name)
+        .map((p) => p.size) || [];
+    };
+
+    return (
+      <Box
+        ref={productsContainerRef}
+        sx={{
+          position: 'relative',
+          '&:focus-within': {
+            outline: 'none'
+          }
+        }}
+        onKeyDown={(e) => {
+          // Prevent tab from moving outside the container
+          if (e.key === 'Tab' && !e.shiftKey) {
+            const focusableElements = productsContainerRef.current?.querySelectorAll(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            const lastElement = focusableElements?.[focusableElements.length - 1];
+            if (e.target === lastElement) {
+              e.preventDefault();
+              const firstElement = focusableElements?.[0];
+              if (firstElement instanceof HTMLElement) {
+                firstElement.focus();
+              }
+            }
+          }
+        }}
+      >
+        <Stack spacing={3}>
+          {currentSite.prizefix?.map((prod, productIndex) => {
+            const productKey = `${selectedSiteIndex}-${productIndex}`;
+            const sizes = getSizesForProduct(prod.productName);
+
+            return (
+              <Paper
+                key={productKey}
+                sx={{
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: '8px',
+                  background: '#f8f9fa',
+                  position: 'relative'
+                }}
+              >
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+                  {/* PRODUCT NAME SELECT */}
+                  <Box flex={2}>
+                    <label style={{ fontWeight: 500, fontSize: '0.875rem' }}>Product Name</label>
+                    <div
+                      data-product-key={productKey}
+                      style={{
+                        position: 'relative',
+                        border: '1px solid #ccc',
+                        borderRadius: 4,
+                        padding: '6px 8px',
+                        cursor: 'pointer',
+                        marginTop: '4px',
+                        backgroundColor: 'white'
+                      }}
+                      tabIndex={0}
+                      onFocus={() => {
+                        handleProductNameFocus(productKey);
+                        setSelectedProductOptionIndex(-1);
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          handleProductNameBlur(productKey);
+                          setSelectedProductOptionIndex(-1);
+                        }, 200);
+                      }}
+                      onKeyDown={(e) => {
+                        if (openProductNameDropdown[productKey]) {
+                          switch (e.key) {
+                            case 'ArrowDown':
+                              e.preventDefault();
+                              setSelectedProductOptionIndex((prev) => 
+                                prev < productNames.length - 1 ? prev + 1 : prev
+                              );
+                              break;
+                            case 'ArrowUp':
+                              e.preventDefault();
+                              setSelectedProductOptionIndex((prev) => 
+                                prev > 0 ? prev - 1 : prev
+                              );
+                              break;
+                            case 'Enter':
+                              e.preventDefault();
+                              if (selectedProductOptionIndex >= 0) {
+                                const selectedProduct = productNames[selectedProductOptionIndex];
+                                handleProductChange(selectedSiteIndex, productIndex, 'productName', selectedProduct);
+                                handleProductChange(selectedSiteIndex, productIndex, 'size', '');
+                                setOpenProductNameDropdown((prev) => ({ ...prev, [productKey]: false }));
+                                // Focus size input
+                                setTimeout(() => {
+                                  const sizeField = document.getElementById(`size-input-${productKey}`);
+                                  sizeField?.focus();
+                                }, 50);
+                              }
+                              break;
+                            case 'Escape':
+                              e.preventDefault();
+                              setOpenProductNameDropdown((prev) => ({ ...prev, [productKey]: false }));
+                              break;
+                          }
+                        }
+                      }}
+                    >
+                      {prod.productName || 'Select Product'}
+                      {openProductNameDropdown[productKey] && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            background: '#fff',
+                            border: '1px solid #ddd',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            marginTop: 4,
+                            zIndex: 999,
+                            maxHeight: '200px',
+                            overflowY: 'auto'
+                          }}
+                        >
+                          {productNames.map((name, index) => (
+                            <div
+                              key={name}
+                              id={`product-option-${index}`}
+                              style={{
+                                padding: '6px',
+                                borderBottom: '1px solid #eee',
+                                backgroundColor: selectedProductOptionIndex === index ? 'lightgray' : 'transparent',
+                                cursor: 'pointer'
+                              }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleProductChange(selectedSiteIndex, productIndex, 'productName', name);
+                                handleProductChange(selectedSiteIndex, productIndex, 'size', '');
+                                setOpenProductNameDropdown((prev) => ({ ...prev, [productKey]: false }));
+                                // Focus size input
+                                setTimeout(() => {
+                                  const sizeField = document.getElementById(`size-input-${productKey}`);
+                                  sizeField?.focus();
+                                }, 50);
+                              }}
+                            >
+                              {name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Box>
+
+                  {/* SIZE SELECT */}
+                  <Box flex={1}>
+                    <label style={{ fontWeight: 500, fontSize: '0.875rem' }}>Size</label>
+                    <div
+                      id={`size-input-${productKey}`}
+                      style={{
+                        position: 'relative',
+                        border: '1px solid #ccc',
+                        borderRadius: 4,
+                        padding: '6px 8px',
+                        cursor: prod.productName ? 'pointer' : 'not-allowed',
+                        marginTop: '4px',
+                        backgroundColor: 'white'
+                      }}
+                      tabIndex={prod.productName ? 0 : -1}
+                      onFocus={() => {
+                        if (prod.productName) {
+                          handleSizeFocus(productKey);
+                          setSelectedSizeOptionIndex(-1);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (prod.productName) {
+                          setTimeout(() => {
+                            handleSizeBlur(productKey);
+                            setSelectedSizeOptionIndex(-1);
+                          }, 200);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (openSizeDropdown[productKey] && prod.productName) {
+                          switch (e.key) {
+                            case 'ArrowDown':
+                              e.preventDefault();
+                              setSelectedSizeOptionIndex((prev) => 
+                                prev < sizes.length - 1 ? prev + 1 : prev
+                              );
+                              break;
+                            case 'ArrowUp':
+                              e.preventDefault();
+                              setSelectedSizeOptionIndex((prev) => 
+                                prev > 0 ? prev - 1 : prev
+                              );
+                              break;
+                            case 'Enter':
+                              e.preventDefault();
+                              if (selectedSizeOptionIndex >= 0) {
+                                const selectedSize = sizes[selectedSizeOptionIndex];
+                                handleProductChange(selectedSiteIndex, productIndex, 'size', selectedSize);
+                                const matchedProduct = products?.find(
+                                  (p) => p.productName === prod.productName && p.size === selectedSize
+                                );
+                                if (matchedProduct?.rate) {
+                                  handleProductChange(selectedSiteIndex, productIndex, 'rate', matchedProduct.rate);
+                                }
+                                setOpenSizeDropdown((prev) => ({ ...prev, [productKey]: false }));
+                                // Focus rate input
+                                setTimeout(() => {
+                                  const rateField = document.getElementById(`rate-${productKey}`);
+                                  rateField?.focus();
+                                }, 50);
+                              }
+                              break;
+                            case 'Escape':
+                              e.preventDefault();
+                              setOpenSizeDropdown((prev) => ({ ...prev, [productKey]: false }));
+                              break;
+                          }
+                        }
+                      }}
+                    >
+                      {prod.size || (prod.productName ? 'Select Size' : 'Please select Product first')}
+                      {openSizeDropdown[productKey] && prod.productName && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            background: '#fff',
+                            border: '1px solid #ddd',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            marginTop: 4,
+                            zIndex: 999,
+                            maxHeight: '200px',
+                            overflowY: 'auto'
+                          }}
+                        >
+                          {sizes.map((sz, index) => (
+                            <div
+                              key={sz}
+                              id={`size-option-${index}`}
+                              style={{
+                                padding: '6px',
+                                borderBottom: '1px solid #eee',
+                                backgroundColor: selectedSizeOptionIndex === index ? 'lightgray' : 'transparent',
+                                cursor: 'pointer'
+                              }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleProductChange(selectedSiteIndex, productIndex, 'size', sz);
+                                const matchedProduct = products?.find(
+                                  (p) => p.productName === prod.productName && p.size === sz
+                                );
+                                if (matchedProduct?.rate) {
+                                  handleProductChange(selectedSiteIndex, productIndex, 'rate', matchedProduct.rate);
+                                }
+                                setOpenSizeDropdown((prev) => ({ ...prev, [productKey]: false }));
+                                // Focus rate input
+                                setTimeout(() => {
+                                  const rateField = document.getElementById(`rate-${productKey}`);
+                                  rateField?.focus();
+                                }, 50);
+                              }}
+                            >
+                              {sz}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Box>
+
+                  {/* RATE INPUT */}
+                  <Box flex={1}>
+                    <FormInput
+                      label="Rate"
+                      name="rate"
+                      type="number"
+                      value={prod.rate?.toString() || '0'}
+                      id={`rate-${productKey}`}
+                      onChange={(e) =>
+                        handleProductChange(
+                          selectedSiteIndex,
+                          productIndex,
+                          'rate',
+                          Number(e.target.value)
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // If this is the last product, add a new one
+                          if (productIndex === currentSite.prizefix.length - 1) {
+                            addProduct(selectedSiteIndex);
+                          }
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Prevent focus from moving outside the product section
+                        if (!e.relatedTarget?.closest('[data-product-section]')) {
+                          e.preventDefault();
+                          const nextProductInput = document.querySelector(`[data-product-key="${productKey}"]`);
+                          if (nextProductInput instanceof HTMLElement) {
+                            nextProductInput.focus();
+                          }
+                        }
+                      }}
+                      sx={{
+                        '& .MuiInputBase-input': { textAlign: 'right', pr: 2 },
+                        mt: { xs: 2, md: 0 }
+                      }}
+                    />
+                  </Box>
+
+                  {/* Action Buttons */}
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton
+                      id={`delete-${productKey}`}
+                      onClick={() => removeProduct(selectedSiteIndex, productIndex)}
+                      sx={{
+                        color: 'error.main'
+                      }}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          removeProduct(selectedSiteIndex, productIndex);
+                        }
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                    {productIndex === currentSite.prizefix.length - 1 && (
+                      <IconButton
+                        onClick={() => addProduct(selectedSiteIndex)}
+                        sx={{
+                          color: 'success.main'
+                        }}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            addProduct(selectedSiteIndex);
+                          }
+                        }}
+                      >
+                        <AddIcon />
+                      </IconButton>
+                    )}
+                  </Box>
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      </Box>
+    );
+  };
+
+  // Add back the PhotoUploadButton component
+  const PhotoUploadButton = ({
+    field,
+    icon,
+    label,
+    id
+  }: {
+    field: 'aadharPhoto' | 'panCardPhoto' | 'customerPhoto';
+    icon: React.ReactNode;
+    label: string;
+    id: string;
+  }) => (
+    <Box flex={1}>
+      <input
+        type="file"
+        accept="image/*"
+        id={`${field}-upload`}
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            handlePhotoUpload(field, file);
+          }
+        }}
+      />
+      <label htmlFor={`${field}-upload`}>
+        <Button
+          component="span"
+          id={id}
+          startIcon={icon}
+          sx={{
+            mt: 2,
+            bgcolor: '#7b4eff',
+            color: 'white',
+            '&:hover': {
+              bgcolor: '#6a3dd9'
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              document.getElementById(`${field}-upload`)?.click();
+            }
+          }}
+        >
+          {label}
+        </Button>
+      </label>
+    </Box>
+  );
+
+  // Add back the renderSiteSelection function
   const renderSiteSelection = () => (
     <Paper
       elevation={0}
@@ -1229,35 +1754,58 @@ const Customer = () => {
           <Typography variant="subtitle1" sx={{ mb: 2 }}>
             {editingSiteIndex === null ? 'Add a New Site' : 'Edit Site'}
           </Typography>
-          <Stack spacing={2}>
-            <TextField
-              label="Site Name"
-              value={tempSite.siteName}
-              onChange={(e) => setTempSite((prev) => ({ ...prev, siteName: e.target.value }))}
-            />
-            <TextField
-              label="Site Address"
-              value={tempSite.siteAddress}
-              onChange={(e) => setTempSite((prev) => ({ ...prev, siteAddress: e.target.value }))}
-            />
-            <TextField
-              label="Supervisor Name"
-              value={tempSite.supervisorName}
-              onChange={(e) => setTempSite((prev) => ({ ...prev, supervisorName: e.target.value }))}
-            />
-            <TextField
-              label="Supervisor Number"
-              value={tempSite.supervisorNumber}
-              onChange={(e) => setTempSite((prev) => ({ ...prev, supervisorNumber: e.target.value }))}
-            />
-            <Stack direction="row" justifyContent="flex-end" spacing={2}>
-              <Button variant="outlined" onClick={handleSiteFormCancel}>
-                Cancel
-              </Button>
-              <Button variant="contained" onClick={handleSiteFormSave}>
-                Save Site
-              </Button>
-            </Stack>
+          <Stack direction={{ xs: 'column', md: 'row' }} marginTop={2} spacing={2}>
+            <Box flex={1}>
+              <FormInput
+                name="siteName"
+                label="Site Name"
+                value={tempSite.siteName}
+                onChange={(e) => setTempSite((prev) => ({ ...prev, siteName: e.target.value }))}
+                size="small"
+              />
+            </Box>
+            <Box flex={1}>
+              <FormInput
+                name="siteAddress"
+                label="Site Address"
+                value={tempSite.siteAddress}
+                onChange={(e) => setTempSite((prev) => ({ ...prev, siteAddress: e.target.value }))}
+                size="small"
+              />
+            </Box>
+          </Stack>
+          <Stack direction={{ xs: 'column', md: 'row' }} marginTop={2} spacing={2}>
+            <Box flex={1}>
+              <FormInput
+                name="supervisorName"
+                label="Supervisor Name"
+                value={tempSite.supervisorName}
+                onChange={(e) => setTempSite((prev) => ({ ...prev, supervisorName: e.target.value }))}
+                type="tel"
+                required
+                size="small"
+              />
+            </Box>
+            <Box flex={1}>
+              <FormInput
+                name="mobileNumber"
+                label="Supervisor Number"
+                value={tempSite.supervisorNumber}
+                onChange={(e) => setTempSite((prev) => ({ ...prev, supervisorNumber: e.target.value }))}
+                validate={validateMobile}
+                type="tel"
+                required
+                size="small"
+              />
+            </Box>
+          </Stack>
+          <Stack direction="row" justifyContent="flex-end" marginTop={2} spacing={2}>
+            <Button variant="outlined" onClick={handleSiteFormCancel} sx={{ bgcolor: 'var(--error-color)', color: 'white' }}>
+              Cancel
+            </Button>
+            <Button variant="contained" onClick={handleSiteFormSave} sx={{ bgcolor: 'var(--primary-color)', color: 'white' }} >
+              Save Site
+            </Button>
           </Stack>
         </Paper>
       )}
@@ -1297,377 +1845,24 @@ const Customer = () => {
     </Paper>
   );
 
-  // ---------- ProductName custom dropdown ----------
-  const handleProductNameFocus = (key: string) => {
-    setOpenProductNameDropdown((prev) => ({ ...prev, [key]: true }));
-  };
-  const handleProductNameBlur = (key: string) => {
-    setTimeout(() => {
-      setOpenProductNameDropdown((prev) => ({ ...prev, [key]: false }));
-    }, 100);
-  };
-
-  // ---------- Size custom dropdown ----------
-  const handleSizeFocus = (key: string) => {
-    setOpenSizeDropdown((prev) => ({ ...prev, [key]: true }));
-  };
-  const handleSizeBlur = (key: string) => {
-    setTimeout(() => {
-      setOpenSizeDropdown((prev) => ({ ...prev, [key]: false }));
-    }, 100);
-  };
-
-  // --------------- Render the product list for the currently selected site ---------------
-  const renderProductsForSite = () => {
-    const currentSite = formData.sites?.[selectedSiteIndex];
-    if (!currentSite) return null;
-
-    // Collect unique product names:
-    const productNames = Array.from(new Set(products?.map((p) => p.productName) || []));
-    // Helper for sizes:
-    const getSizesForProduct = (name: string) => {
-      return products
-        ?.filter((p) => p.productName === name)
-        .map((p) => p.size) || [];
-    };
-
-    return (
-      <Paper
-        sx={{
-          p: 3,
-          mt: 3,
-          borderRadius: '12px',
-          border: '1px solid',
-          borderColor: 'divider',
-          background: 'white'
-        }}
-      >
-        <Stack spacing={3}>
-          {/* Example "site info" card */}
-          <Card
-            sx={{
-              cursor: 'pointer',
-              border: '1px solid',
-              borderColor: 'var(--primary-color)',
-              backgroundColor: '#7b4eff38',
-              borderRadius: '12px',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              overflow: 'visible',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-                borderColor: 'var(--primary-color)'
-              }
-            }}
-          >
-            <CardContent sx={{ p: 2.5 }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  mb: 1
-                }}
-              >
-                <Box sx={{ flex: 1, mr: 1 }}>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      fontWeight: 600,
-                      color: 'var(--primary-color)',
-                      mb: 0.5
-                    }}
-                  >
-                    {currentSite.siteName}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="var(--primary-light)"
-                    sx={{
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      height: '40px'
-                    }}
-                  >
-                    {currentSite.siteAddress || 'No address provided'}
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Box
-                sx={{
-                  mt: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    px: 1.5,
-                    py: 0.5,
-                    bgcolor: 'primary.lighter',
-                    color: 'primary.main',
-                    borderRadius: '4px',
-                    fontWeight: 500
-                  }}
-                >
-                  {currentSite.prizefix?.length || 0} Products
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    px: 1.5,
-                    py: 0.5,
-                    bgcolor: 'success.lighter',
-                    color: 'success.main',
-                    borderRadius: '4px',
-                    fontWeight: 500
-                  }}
-                >
-                  {currentSite.challanNumber}
-                </Typography>
-              </Box>
-
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.4 }}>
-                  Supervisor: <strong>{currentSite.supervisorName || '-'}</strong>
-                </Typography>
-                <Typography variant="caption">
-                  Number: <strong>{currentSite.supervisorNumber || '-'}</strong>
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-
-          {currentSite.prizefix?.map((prod, productIndex) => {
-            const productKey = `${selectedSiteIndex}-${productIndex}`;
-
-            return (
-              <Paper
-                key={productKey}
-                sx={{
-                  p: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: '8px',
-                  background: '#f8f9fa',
-                  position: 'relative'
-                }}
-              >
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
-                  {/* PRODUCT NAME SELECT */}
-                  <Box flex={2}>
-                    <label style={{ fontWeight: 500, fontSize: '0.875rem' }}>Product Name</label>
-                    <div
-                      style={{
-                        position: 'relative',
-                        border: '1px solid #ccc',
-                        borderRadius: 4,
-                        padding: '6px 8px',
-                        cursor: 'pointer',
-                        marginTop: '4px'
-                      }}
-                      tabIndex={0}
-                      onFocus={() => handleProductNameFocus(productKey)}
-                      onBlur={() => handleProductNameBlur(productKey)}
-                    >
-                      {prod.productName || 'Select Product'}
-                      {openProductNameDropdown[productKey] && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: 0,
-                            right: 0,
-                            background: '#fff',
-                            border: '1px solid #ddd',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                            marginTop: 4,
-                            zIndex: 999
-                          }}
-                        >
-                          {productNames.length === 0 && (
-                            <div style={{ padding: '6px' }}>
-                              <em>No products found</em>
-                            </div>
-                          )}
-                          {productNames.map((name) => (
-                            <div
-                              key={name}
-                              style={{
-                                padding: '6px',
-                                borderBottom: '1px solid #eee'
-                              }}
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                handleProductChange(
-                                  selectedSiteIndex,
-                                  productIndex,
-                                  'productName',
-                                  name
-                                );
-                                // reset size
-                                handleProductChange(selectedSiteIndex, productIndex, 'size', '');
-                                setOpenProductNameDropdown((prev) => ({
-                                  ...prev,
-                                  [productKey]: false
-                                }));
-
-                                // focus next => size
-                                setTimeout(() => {
-                                  const sizeField = document.getElementById(`size-input-${productKey}`);
-                                  sizeField?.focus();
-                                }, 50);
-                              }}
-                            >
-                              {name}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </Box>
-
-                  {/* SIZE SELECT */}
-                  <Box flex={1}>
-                    <label style={{ fontWeight: 500, fontSize: '0.875rem' }}>Size</label>
-                    <div
-                      id={`size-input-${productKey}`}
-                      style={{
-                        position: 'relative',
-                        border: '1px solid #ccc',
-                        borderRadius: 4,
-                        padding: '6px 8px',
-                        cursor: prod.productName ? 'pointer' : 'not-allowed',
-                        marginTop: '4px'
-                      }}
-                      tabIndex={prod.productName ? 0 : -1}
-                      onFocus={() => {
-                        if (prod.productName) handleSizeFocus(productKey);
-                      }}
-                      onBlur={() => {
-                        if (prod.productName) handleSizeBlur(productKey);
-                      }}
-                    >
-                      {prod.size ||
-                        (prod.productName ? 'Select Size' : 'Please select Product first')}
-                      {openSizeDropdown[productKey] && prod.productName && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: 0,
-                            right: 0,
-                            background: '#fff',
-                            border: '1px solid #ddd',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                            marginTop: 4,
-                            zIndex: 999
-                          }}
-                        >
-                          {getSizesForProduct(prod.productName).length === 0 && (
-                            <div style={{ padding: '6px' }}>
-                              <em>No sizes found</em>
-                            </div>
-                          )}
-                          {getSizesForProduct(prod.productName).map((sz) => (
-                            <div
-                              key={sz}
-                              style={{
-                                padding: '6px',
-                                borderBottom: '1px solid #eee'
-                              }}
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                handleProductChange(
-                                  selectedSiteIndex,
-                                  productIndex,
-                                  'size',
-                                  sz
-                                );
-
-                                // If product also has a known rate
-                                const matchedProduct = products?.find(
-                                  (p) => p.productName === prod.productName && p.size === sz
-                                );
-                                const newRate = matchedProduct?.rate || 0;
-                                handleProductChange(selectedSiteIndex, productIndex, 'rate', newRate);
-
-                                setOpenSizeDropdown((prev) => ({ ...prev, [productKey]: false }));
-
-                                // Focus next => rate
-                                setTimeout(() => {
-                                  const rateField = document.getElementById(`rate-${productKey}`);
-                                  rateField?.focus();
-                                }, 50);
-                              }}
-                            >
-                              {sz}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </Box>
-
-                  {/* RATE INPUT */}
-                  <Box flex={1}>
-                    <FormInput
-                      label="Rate"
-                      name="rate"
-                      type="number"
-                      value={prod.rate?.toString() || '0'}
-                      id={`rate-${productKey}`}
-                      onChange={(e) =>
-                        handleProductChange(
-                          selectedSiteIndex,
-                          productIndex,
-                          'rate',
-                          Number(e.target.value)
-                        )
-                      }
-                      sx={{
-                        '& .MuiInputBase-input': { textAlign: 'right', pr: 2 },
-                        mt: { xs: 2, md: 0 }
-                      }}
-                    />
-                  </Box>
-
-                  {/* Delete Product Icon */}
-                  <IconButton
-                    id={`delete-${productKey}`}
-                    onClick={() => removeProduct(selectedSiteIndex, productIndex)}
-                    sx={{
-                      color: 'error.main',
-                      position: { xs: 'absolute', md: 'static' },
-                      top: 8,
-                      right: 8
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Stack>
-              </Paper>
-            );
-          })}
-
-          {/* Add Product button */}
-          <Box>
-            <Button
-              startIcon={<AddIcon />}
-              variant="outlined"
-              onClick={() => addProduct(selectedSiteIndex)}
-            >
-              Add Product
-            </Button>
-          </Box>
-        </Stack>
-      </Paper>
-    );
-  };
+  // Add effect to handle focus and scroll after adding product
+  useEffect(() => {
+    if (lastAddedProductIndex >= 0) {
+      const newProductKey = `${selectedSiteIndex}-${lastAddedProductIndex}`;
+      const newProductInput = document.querySelector(`[data-product-key="${newProductKey}"]`);
+      
+      if (newProductInput instanceof HTMLElement) {
+        // Scroll the new product into view
+        newProductInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Focus after a short delay to ensure DOM is updated
+        setTimeout(() => {
+          newProductInput.focus();
+          setLastAddedProductIndex(-1); // Reset the index
+        }, 100);
+      }
+    }
+  }, [lastAddedProductIndex, selectedSiteIndex]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -1688,6 +1883,18 @@ const Customer = () => {
       {/* ADD/EDIT MODAL */}
       <Modal open={open} onClose={handleClose} aria-labelledby="modal-title">
         <Box sx={modalStyle}>
+          <IconButton
+            onClick={handleClose}
+            sx={{
+              fontSize: 'xx-large',
+              position: 'sticky',
+              top: 10,
+              left: '99%',
+              color: 'var(--error-color)',
+              '&:hover': {
+                backgroundColor: 'transparent'
+              }
+            }}>x</IconButton>
           <Typography id="modal-title" variant="h6" component="h2" sx={{ mb: 3 }}>
             {isEditMode ? 'Edit Customer' : 'Add New Customer'}
           </Typography>
@@ -1700,15 +1907,56 @@ const Customer = () => {
                 <Box flex={1} sx={{ position: 'relative' }}>
                   <TextField
                     autoFocus
+                    id="customer-name"
                     label="Customer Name"
                     value={searchQuery}
                     className="customer-name-input"
                     onChange={handleCustomerSearchChange}
+                    onKeyDown={(e) => {
+                      if (customers.length > 0) {
+                        switch (e.key) {
+                          case 'ArrowDown':
+                            e.preventDefault();
+                            setSelectedOptionIndex((prev) => 
+                              prev < customers.length - 1 ? prev + 1 : prev
+                            );
+                            break;
+                          case 'ArrowUp':
+                            e.preventDefault();
+                            setSelectedOptionIndex((prev) => (prev > 0 ? prev - 1 : prev));
+                            break;
+                          case 'Enter':
+                            e.preventDefault();
+                            if (selectedOptionIndex >= 0) {
+                              handleCustomerSelect(customers[selectedOptionIndex]);
+                            } else {
+                              handleKeyDown(e, 'mobile-number');
+                            }
+                            break;
+                          case 'Escape':
+                            e.preventDefault();
+                            setCustomers([]);
+                            setSelectedOptionIndex(-1);
+                            break;
+                          default:
+                            handleKeyDown(e, 'mobile-number');
+                        }
+                      } else {
+                        handleKeyDown(e, 'mobile-number');
+                      }
+                    }}
                     fullWidth
                     required
                     autoComplete="on"
                     variant="outlined"
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Customer Name',
+                      role: 'combobox',
+                      'aria-expanded': customers.length > 0,
+                      'aria-controls': 'customer-suggestions',
+                      'aria-activedescendant': selectedOptionIndex >= 0 ? `option-${selectedOptionIndex}` : undefined
+                    }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '4px',
@@ -1724,6 +1972,8 @@ const Customer = () => {
                   {/* Autocomplete Suggestions */}
                   {customers.length > 0 && (
                     <Paper
+                      id="customer-suggestions"
+                      role="listbox"
                       sx={{
                         position: 'absolute',
                         top: '100%',
@@ -1737,15 +1987,30 @@ const Customer = () => {
                         backgroundColor: 'var(--surface-light)'
                       }}
                     >
-                      {customers.map((cust) => (
+                      {customers.map((cust, index) => (
                         <Box
                           key={cust._id}
+                          id={`option-${index}`}
+                          role="option"
+                          tabIndex={0}
+                          aria-selected={selectedOptionIndex === index}
                           sx={{
                             p: 1,
                             cursor: 'pointer',
-                            '&:hover': { backgroundColor: 'lightgray' }
+                            backgroundColor: selectedOptionIndex === index ? 'lightgray' : 'transparent',
+                            '&:hover': { backgroundColor: 'lightgray' },
+                            '&:focus': {
+                              backgroundColor: 'lightgray',
+                              outline: 'none'
+                            }
                           }}
                           onClick={() => handleCustomerSelect(cust)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleCustomerSelect(cust);
+                            }
+                          }}
                         >
                           {cust.customerName}
                         </Box>
@@ -1756,24 +2021,36 @@ const Customer = () => {
 
                 <Box flex={1}>
                   <FormInput
+                    id="mobile-number"
                     name="mobileNumber"
                     label="Mobile Number"
                     value={formData.mobileNumber ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'gst-number')}
                     validate={validateMobile}
                     type="tel"
                     required
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Mobile Number',
+                      pattern: '[6-9]\\d{9}'
+                    }}
                   />
                 </Box>
                 <Box flex={1}>
                   <FormInput
+                    id="gst-number"
                     name="GSTnumber"
                     label="GST Number"
                     value={formData.GSTnumber ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'partner-name')}
                     validate={validateGST}
                     size="small"
+                    inputProps={{
+                      'aria-label': 'GST Number',
+                      pattern: '[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}'
+                    }}
                   />
                 </Box>
               </Stack>
@@ -1782,31 +2059,47 @@ const Customer = () => {
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                 <Box flex={1}>
                   <FormInput
+                    id="partner-name"
                     name="partnerName"
                     label="Partner Name"
                     value={formData.partnerName ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'partner-mobile')}
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Partner Name'
+                    }}
                   />
                 </Box>
                 <Box flex={1}>
                   <FormInput
+                    id="partner-mobile"
                     name="partnerMobileNumber"
                     label="Partner Mobile Number"
                     value={formData.partnerMobileNumber ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'resident-address')}
                     validate={validateMobile}
                     type="tel"
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Partner Mobile Number',
+                      pattern: '[6-9]\\d{9}'
+                    }}
                   />
                 </Box>
                 <Box flex={1}>
                   <FormInput
+                    id="resident-address"
                     name="residentAddress"
                     label="Resident Address"
                     value={formData.residentAddress ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'reference')}
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Resident Address'
+                    }}
                   />
                 </Box>
               </Stack>
@@ -1815,40 +2108,63 @@ const Customer = () => {
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                 <Box flex={1}>
                   <FormInput
+                    id="reference"
                     name="reference"
                     label="Reference"
                     value={formData.reference ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'reference-mobile')}
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Reference'
+                    }}
                   />
                 </Box>
                 <Box flex={1}>
                   <FormInput
+                    id="reference-mobile"
                     name="referenceMobileNumber"
                     label="Reference Mobile Number"
                     value={formData.referenceMobileNumber ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'aadhar-no')}
                     validate={validateMobile}
                     type="tel"
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Reference Mobile Number',
+                      pattern: '[6-9]\\d{9}'
+                    }}
                   />
                 </Box>
                 <Box flex={1}>
                   <FormInput
+                    id="aadhar-no"
                     name="aadharNo"
                     label="Aadhar No"
                     value={formData.aadharNo ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'pancard-no')}
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Aadhar Number',
+                      pattern: '\\d{12}'
+                    }}
                   />
                 </Box>
                 <Box flex={1}>
                   <FormInput
+                    id="pancard-no"
                     name="pancardNo"
                     label="Pan Card No"
                     value={formData.pancardNo ?? ''}
                     onChange={handleChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'aadhar-photo')}
                     size="small"
+                    inputProps={{
+                      'aria-label': 'Pan Card Number',
+                      pattern: '[A-Z]{5}[0-9]{4}[A-Z]{1}'
+                    }}
                   />
                 </Box>
               </Stack>
@@ -1859,16 +2175,19 @@ const Customer = () => {
                   field="aadharPhoto"
                   icon={<AddAPhotoIcon />}
                   label="Aadhar Photo"
+                  id="aadhar-photo"
                 />
                 <PhotoUploadButton
                   field="panCardPhoto"
                   icon={<CreditCardIcon />}
                   label="Pan Card Photo"
+                  id="pancard-photo"
                 />
                 <PhotoUploadButton
                   field="customerPhoto"
                   icon={<PersonIcon />}
                   label="Customer Photo"
+                  id="customer-photo"
                 />
               </Stack>
 
@@ -1876,7 +2195,9 @@ const Customer = () => {
               {renderSiteSelection()}
 
               {/* Products for selected site */}
-              {renderProductsForSite()}
+              <Box data-product-section>
+                {renderProductsForSite()}
+              </Box>
 
               {/* Action Buttons */}
               <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
@@ -1919,7 +2240,7 @@ const Customer = () => {
           ref={gridRef}
           rows={customer}
           columns={columns}
-          loading={loading}
+          loading={loading || isLoadingPreferences}
           disableRowSelectionOnClick
           getRowId={(row: any) => row._id}
           sx={{
@@ -1941,12 +2262,19 @@ const Customer = () => {
           }}
           filterModel={gridFilterModel}
           onFilterModelChange={(model) => setGridFilterModel(model)}
+          columnVisibilityModel={columnVisibility}
           onColumnVisibilityModelChange={(newModel) => {
             setColumnVisibility(newModel);
+            saveColumnVisibility(newModel);
           }}
           disableColumnFilter={false}
           disableDensitySelector
           disableColumnSelector={false}
+          initialState={{
+            columns: {
+              columnVisibilityModel: columnVisibility
+            }
+          }}
         />
       </Paper>
     </Box>

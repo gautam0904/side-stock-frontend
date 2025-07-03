@@ -79,10 +79,7 @@ const Products = () => {
       headerName: 'Actions',
       width: 100,
       renderCell: (params) => (
-        <Box 
-          sx={{ display: 'flex', alignItems: 'center', gap: 2 }} 
-          style={{ display: 'flex', alignItems: 'center', gap: '16px' }} // Forcefully applied inline styles
-        >
+        <Box className={'action-div'} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, paddingRight: 1 }}>
           <EditIcon
             fontSize="small"
             onClick={() => handleEditClick(params.row)}
@@ -90,8 +87,9 @@ const Products = () => {
           />
           <DeleteIcon
             fontSize="small"
+            color="error"
             onClick={() => handleDeleteClick(params.row._id)}
-            sx={{ color: 'var(--error-color)', cursor: 'pointer' }}
+            sx={{  cursor: 'pointer' }}
           />
         </Box>
       )
@@ -274,8 +272,8 @@ const Products = () => {
                     label="Rate"
                     type="number"
                     min={0}
-                    step="0.01" 
-                    value={formData.rate || 0} 
+                    step="0.01"
+                    value={formData.rate || 0}
                     onChange={handleChange}
                     required
                     fullWidth

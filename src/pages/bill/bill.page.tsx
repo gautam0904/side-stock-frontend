@@ -1,20 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { billService } from '../../api/bill.service'
-import { productService } from '../../api/product.service';
 import { toast } from 'react-hot-toast';
 import {
     Box,
     Button,
-    Modal,
     Typography,
-    IconButton,
     Dialog,
-    DialogTitle,
     DialogContent,
     DialogActions,
-    DialogContentText,
     CircularProgress,
-    Stack,
     Paper,
     Select,
     MenuItem,
@@ -29,34 +23,23 @@ import {
     debounce,
     Divider,
     Card,
-    CardContent,
-    Chip
+    Chip,
+    Accordion, AccordionDetails, AccordionSummary,
 } from '@mui/material';
-import { DataGrid, GridColDef, GridRenderCellParams, GridFilterModel, GridLogicOperator, GridFilterItem } from '@mui/x-data-grid';
-import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
+import { GridFilterModel, GridLogicOperator, GridFilterItem } from '@mui/x-data-grid';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import AddIcon from '@mui/icons-material/Add';
 import Form from '../../components/form/form.component';
 import { FormInput } from '../../components/formInput/formInput.component';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import {
     GridToolbarContainer,
-    GridToolbarFilterButton,
-    GridToolbarColumnsButton,
 } from '@mui/x-data-grid';
-import { SelectChangeEvent } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import PhotoIcon from '@mui/icons-material/Photo';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PersonIcon from '@mui/icons-material/Person';
 import { ICustomer, ISite } from 'src/DTO/customer.dto';
 import CommonDataTable from '../../components/dataTable/dataTable.component';
 import { customerService } from '../../api/customer.service';
-import { debug } from 'console';
 import ConnectWithoutContactIcon from '@mui/icons-material/ConnectWithoutContact'
 import HomeWorkIcon from '@mui/icons-material/HomeWork'
 import ListAltIcon from '@mui/icons-material/ListAlt'
@@ -67,13 +50,15 @@ import NumbersIcon from '@mui/icons-material/Numbers'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import SendIcon from '@mui/icons-material/Send';
-import ShareIcon from '@mui/icons-material/Share';
 import html2canvas from 'html2canvas';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import CloseIcon from '@mui/icons-material/Close';
+import NotesIcon from '@mui/icons-material/Notes';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 
 declare module 'jspdf' {
     interface jsPDF {
@@ -206,17 +191,25 @@ const Bill = () => {
     const billPdfRef = useRef(null);
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    // State for challan dialog
+    const [challanDialogOpen, setChallanDialogOpen] = useState<boolean>(false);
+    const [selectedChallan, setSelectedChallan] = useState<any>(null);
 
     useEffect(() => {
         const fetchCustomer = async () => {
             try {
                 const response = await customerService.getAllCustomers();
                 // Group products by name with their available sizes
-                const groupedProducts = response.data.products.reduce((acc: any[], product: ICustomer) => {
-                    acc.push({ customerName: product.customerName, sites: product.sites });
-                    return acc;
-                }, []);
-                setProductOptions(groupedProducts);
+                
+                const data: any = response.data.items.filter((c: ICustomer, index : number) => {
+                    if (index < 5) {
+                        return {
+                            ...c,
+                            customerName: c.customerName?.replace(/['"]/g, "").trim()
+                        }
+                    }
+                })
+                setCustomers(data);
             } catch (error) {
                 toast.error('Failed to fetch products');
             }
@@ -593,21 +586,6 @@ const Bill = () => {
         </Box>
     );
 
-    const DateItem = ({ label, date }: any) => (
-        <Box>
-            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                {label}
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#475569', fontWeight: 600 }}>
-                {new Date(date).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                })}
-            </Typography>
-        </Box>
-    );
-
     const StyledCard = styled(Card)({
         boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
         borderRadius: '12px',
@@ -887,6 +865,12 @@ const Bill = () => {
         </Dialog>
     );
 
+    // Function to handle challan selection
+    const handleChallanSelect = (challan: any) => {
+        setSelectedChallan(challan);
+        setChallanDialogOpen(true);
+    };
+
     return (
         <Box sx={{ p: 2 }}>
             <Form onSubmit={handleSubmit}>
@@ -1148,6 +1132,53 @@ const Bill = () => {
                         </Grid>
                     </Grid>
 
+                    <Box>
+      {billData?.monthData?.map((yearData: any) => (
+        <Accordion key={yearData.year} sx={{ mb: 2 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: "#0284c7" }}>
+              {yearData.year}
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            {yearData?.months?.map((monthData:any) => (
+              <Accordion key={monthData.month} sx={{ mb: 1 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}> 
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#16a34a" }}>
+                    {new Date(0, monthData.month - 1).toLocaleString("default", { month: "long" })}
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table>
+                      <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600 }}>Product Name</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>Size</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>Quantity</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>Rate</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {monthData.products.map((product : any, index:number) => (
+                          <TableRow key={index}>
+                            <TableCell>{product.productName}</TableCell>
+                            <TableCell>{product.size}</TableCell>
+                            <TableCell>{product.quantity}</TableCell>
+                            <TableCell>₹{product.rate}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </AccordionDetails>
+              </Accordion>
+            ))}
+          </AccordionDetails>
+        </Accordion>
+      ))}
+    </Box>
+
                     {/* Challans Section */}
                     <Box sx={{ mb: 3 }}>
                         <SectionHeading title="Challans" icon={<ListAltIcon />} />
@@ -1155,18 +1186,29 @@ const Bill = () => {
                         <Grid container spacing={2}>
                             {billData.challans.map((challan: any) => (
                                 <Grid item xs={12} sm={6} key={challan._id}>
-                                    <Box sx={{
-                                        backgroundColor: '#F9F9F9',
-                                        borderRadius: '8px',
-                                        p: 2,
-                                        textAlign: 'left',
-                                        border: '1px solid #E0E0E0'
-                                    }}>
+                                    <Box 
+                                        sx={{
+                                            backgroundColor: 'var(--warning-bg-light)',
+                                            width:"fit-content",
+                                            borderRadius: '8px',
+                                            p: 2,
+                                            paddingRight: 6,
+                                            textAlign: 'left',
+                                            border: '1px solid #E0E0E0',
+                                            cursor: 'pointer',
+                                            transition: 'transform 0.2s, box-shadow 0.2s',
+                                            '&:hover': {
+                                                transform: 'translateY(-2px)',
+                                                boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
+                                            }
+                                        }}
+                                        onClick={() => handleChallanSelect(challan)}
+                                    >
                                         <Typography variant="body2" sx={{ fontWeight: '500', mb: 1 }}>
-                                            Challan ID
+                                            Challan Number
                                         </Typography>
                                         <Chip
-                                            label={challan._id}
+                                            label={challan.challanNumber}
                                             color="primary"
                                             sx={{
                                                 fontWeight: '500',
@@ -1214,6 +1256,128 @@ const Bill = () => {
 
             {/* Render WhatsApp dialog */}
             <WhatsAppDialog />
+            {/* Challan Details Dialog */}
+            <Dialog 
+                open={challanDialogOpen} 
+                onClose={() => setChallanDialogOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <Box sx={{ 
+                    bgcolor: '#6366f1', 
+                    p: 2, 
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent : 'space-between',
+                    gap: 1
+                }}>
+                    <Typography variant="h6">
+                    <ListAltIcon />
+                        Challan Details
+                    </Typography>
+                    <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button 
+                        onClick={() => setChallanDialogOpen(false)} 
+                        variant="outlined"
+                        startIcon={<CloseIcon />}
+                        sx={{
+                            borderColor: '#6366f1',
+                            color: 'black',
+                        }}
+                    >
+                    </Button>
+                </DialogActions>
+                </Box>
+                
+                <DialogContent sx={{ pt: 3 }}>
+  {selectedChallan ? (
+    <>
+      <Box sx={{ mb: 3 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <Paper elevation={1} sx={{ p: 2, bgcolor: '#eef2ff', borderRadius: '8px', height: '100%' }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: '#3730a3' }}>
+                Challan Information
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Challan Type:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{selectedChallan.challenType}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Challan Number:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{selectedChallan.challanNumber}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Date:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{new Date(selectedChallan.date).toLocaleDateString()}</Typography>
+                </Box>
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Paper elevation={1} sx={{ p: 2, bgcolor: '#dcfce7', borderRadius: '8px', height: '100%' }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: '#166534' }}>
+                Customer Details
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Customer Name:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{selectedChallan.customerName}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Mobile Number:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{selectedChallan.mobileNumber}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Site Address:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{selectedChallan.siteAddress}</Typography>
+                </Box>
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+
+      <Typography variant="h6" sx={{ mb: 2, color: '#4338ca' }}>
+        Product Details
+      </Typography>
+      <TableContainer component={Paper} elevation={1}>
+        <Table>
+          <TableHead sx={{ bgcolor: '#f3f4f6' }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Product Name</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Size</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 600 }}>Quantity</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 600 }}>Rate</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 600 }}>Amount</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {selectedChallan.products?.map((product: any, idx: number) => (
+              <TableRow key={idx}>
+                <TableCell>{product.productName}</TableCell>
+                <TableCell>{product.size}</TableCell>
+                <TableCell align="right">{product.quantity}</TableCell>
+                <TableCell align="right">₹{product.rate?.toFixed(2)}</TableCell>
+                <TableCell align="right">₹{product.amount?.toFixed(2)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </>
+  ) : (
+    <Box sx={{ p: 4, textAlign: 'center' }}>
+      <CircularProgress />
+    </Box>
+  )}
+</DialogContent>
+
+                
+                
+            </Dialog>
         </Box>
     );
 };

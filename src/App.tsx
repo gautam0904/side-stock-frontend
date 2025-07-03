@@ -51,7 +51,7 @@ const App = () => {
                     </Routes>
                   </main>
                 </Suspense>
-              </NavigationProvider>
+              </NavigationProvider> 
             </Router>
           </ErrorBoundary>
         </SidebarProvider>

@@ -98,7 +98,7 @@ interface IChallan {
   challanNumber: string;
   type: string;
   date: Date | string;
-  custsomerName: string;
+  customerName: string;
   customerId: string;
   mobileNumber: string;
   siteName: string;
@@ -126,7 +126,7 @@ const initialFormData: IChallan = {
   challanNumber: '',
   date: new Date(),
   customerId: '',
-  custsomerName: '',
+  customerName: '',
   type: 'Delivery',
   mobileNumber: '',
   siteAddress: '',
@@ -279,9 +279,10 @@ const Challan: React.FC = () => {
       width: 60,
       sortable: false,
       renderCell: (params: GridRenderCellParams) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+        <Box className={'action-div'} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
           <EditIcon
             fontSize="small"
+            sx={{ color: 'var(--primary-color)' }}
             onClick={(e) => {
               e.stopPropagation();
               handleEditClick(params.row);
@@ -648,7 +649,7 @@ const Challan: React.FC = () => {
     setFormData((prev) => {
       const newForm = {
         ...prev,
-        custsomerName: customer.customerName || '',
+        customerName: customer.customerName || '',
         customerId: customer._id || '',
         mobileNumber: customer.mobileNumber || ''
       };
@@ -741,7 +742,7 @@ const Challan: React.FC = () => {
                 <Typography variant="body2" color="textSecondary">
                   Customer Name:
                 </Typography>
-                <Typography>{selectedPurchase.custsomerName}</Typography>
+                <Typography>{selectedPurchase.customerName}</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="body2" color="textSecondary">
@@ -826,6 +827,86 @@ const Challan: React.FC = () => {
             </Table>
           </TableContainer>
         </DialogContent>
+
+        <DialogContent sx={{ pt: 3 }}>
+          <>
+            <Box sx={{ mb: 3 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Paper elevation={1} sx={{ p: 2, bgcolor: '#eef2ff', borderRadius: '8px', height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: '#3730a3' }}>
+                      Challan Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Challan Type:</Typography>
+                        <Typography variant="body2" fontWeight={500}>{selectedPurchase.type}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Challan Number:</Typography>
+                        <Typography variant="body2" fontWeight={500}>{selectedPurchase.challanNumber}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Date:</Typography>
+                        <Typography variant="body2" fontWeight={500}>{new Date(selectedPurchase.date).toLocaleDateString()}</Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Paper elevation={1} sx={{ p: 2, bgcolor: '#dcfce7', borderRadius: '8px', height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: '#166534' }}>
+                      Customer Details
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Customer Name:</Typography>
+                        <Typography variant="body2" fontWeight={500}>{selectedPurchase.customerName}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Mobile Number:</Typography>
+                        <Typography variant="body2" fontWeight={500}>{selectedPurchase.mobileNumber}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Site Address:</Typography>
+                        <Typography variant="body2" fontWeight={500}>{selectedPurchase.siteAddress}</Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Box>
+
+            <Typography variant="h6" sx={{ mb: 2, color: '#4338ca' }}>
+              Product Details
+            </Typography>
+            <TableContainer component={Paper} elevation={1}>
+              <Table>
+                <TableHead sx={{ bgcolor: '#f3f4f6' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Product Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Size</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Quantity</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Rate</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Amount</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {selectedPurchase.products?.map((product, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{product.productName}</TableCell>
+                      <TableCell>{product.size}</TableCell>
+                      <TableCell align="right">{product.quantity}</TableCell>
+                      <TableCell align="right">₹{product.rate?.toFixed(2)}</TableCell>
+                      <TableCell align="right">₹{product.amount?.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
+        </DialogContent>
+
         <DialogActions>
           <Button onClick={() => setProductPopupOpen(false)}>Close</Button>
         </DialogActions>
@@ -1005,8 +1086,8 @@ const Challan: React.FC = () => {
               {product.size
                 ? product.size
                 : product.productName
-                ? 'Select Size'
-                : 'Please select Product first'}
+                  ? 'Select Size'
+                  : 'Please select Product first'}
 
               {isSizeOpen && product.productName && (
                 <div
@@ -1335,16 +1416,8 @@ const Challan: React.FC = () => {
                     onChange={(date: Date | null) => {
                       if (!date) return;
                       setFormData((prev) => ({ ...prev, date }));
-                      setDatePickerOpen(false);
-                      // Move focus to next field => site (open site dropdown)
-                      setTimeout(() => setSiteSelectOpen(true), 50);
                     }}
-                    onFocus={() => {
-                      setDatePickerOpen(true);
-                    }}
-                    open={datePickerOpen}
-                    onClickOutside={() => setDatePickerOpen(false)}
-                    onSelect={() => setDatePickerOpen(false)}
+                    // onSelect={() => setDatePickerOpen(false)}
                     dateFormat="dd/MM/yyyy"
                     className="form-control datepicker-custom "
                     placeholderText="Select date"
@@ -1432,6 +1505,7 @@ const Challan: React.FC = () => {
 
               {/* Row 3: Service, Damage, Loading, Unloading, Transport */}
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              {formData.type === 'Delivery' ? 
                 <Box flex={1}>
                   <FormInput
                     name="serviceCharge"
@@ -1444,6 +1518,7 @@ const Challan: React.FC = () => {
                     inputref={serviceChargeRef}
                   />
                 </Box>
+                :
                 <Box flex={1}>
                   <FormInput
                     name="damageCharge"
@@ -1456,6 +1531,8 @@ const Challan: React.FC = () => {
                     inputref={damageChargeRef}
                   />
                 </Box>
+}
+                {formData.type === 'Delivery' ? 
                 <Box flex={1}>
                   <FormInput
                     name="loading"
@@ -1467,6 +1544,7 @@ const Challan: React.FC = () => {
                     inputref={loadingRef}
                   />
                 </Box>
+                :
                 <Box flex={1}>
                   <FormInput
                     name="unloading"
@@ -1478,24 +1556,7 @@ const Challan: React.FC = () => {
                     inputref={unloadingRef}
                   />
                 </Box>
-                <Box flex={1}>
-                  <FormInput
-                    name="transportCharge"
-                    label="Transport Charge"
-                    type="number"
-                    min={0}
-                    value={formData.transportCharge}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setFormData((prev) => ({
-                        ...prev,
-                        transportCharge: val,
-                        totalAmount: (prev.totalAmount || 0) - (prev.transportCharge || 0) + val
-                      }));
-                    }}
-                    inputref={transportChargeRef}
-                  />
-                </Box>
+}
               </Stack>
 
               {/* Products Section */}

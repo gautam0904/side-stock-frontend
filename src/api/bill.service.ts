@@ -38,8 +38,6 @@ class BillService {
 
   getAllBill(params: any = {}, signal?: AbortSignal) {
     const requestKey = this.createRequestKey('/bill/get', params);
-console.log(params);
-
     return this.debounceRequest(requestKey, () =>
       axiosInstance.get('/bill/get', {
         params,

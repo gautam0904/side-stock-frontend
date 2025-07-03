@@ -26,12 +26,12 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await userLogin(username, password);
+      sessionStorage.setItem('accessToken', response.data.token);
       login(response.token, response.user);
       toast.success(response.message || 'Login successful');
       navigate('/dashboard');
     } catch (error: any) {
       console.log(error);
-      toast.error(error.response?.message || 'An error occurred');
     }
   };
 

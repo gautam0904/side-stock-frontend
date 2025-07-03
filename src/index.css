@@ -52,7 +52,7 @@
 
 body {
   font-family: 'Arial', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   background-color: var(--background-light);
   color: var(--text-dark);
   margin: 0;
@@ -220,6 +220,14 @@ body.light-theme .card {
 
 body.light-theme .navbar {
   background-color: var(--primary-light);
+}
+
+.action-div{
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-right: 1rem;
 }
 
 /* Scrollbar Styles */

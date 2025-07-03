@@ -24,6 +24,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useNavigate } from 'react-router-dom';
+import { logout } from '../../api/auth.service';
 import ProductionQuantityLimitsIcon from '@mui/icons-material/ProductionQuantityLimits';
 import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
@@ -32,6 +33,7 @@ import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import CurrencyBitcoinIcon from '@mui/icons-material/CurrencyBitcoin';
 import EmojiSymbolsIcon from '@mui/icons-material/EmojiSymbols';
 import SummarizeIcon from '@mui/icons-material/Summarize';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 
 interface Props {
   /**
@@ -62,7 +64,7 @@ const Navbar: React.FC<Props> = (props) => {
   const settings = ['Profile', 'Account', 'Dashboard', 'Logout'];
 
   const gstMenuItems = [
-    { key: 'home', text: 'Home', icon: HomeIcon, path: '/dashboard'},
+    { key: 'home', text: 'Home', icon: HomeIcon, path: '/dashboard' },
     { key: 'stocks', text: 'Stocks', icon: AutoStoriesIcon, path: '/stocks' },
     { key: 'add-sale', text: 'Add Sale', icon: PointOfSaleIcon, path: '/sales/new' },
     { key: 'add-purchase', text: 'Add Purchase', icon: DashboardCustomizeIcon, path: '/purchasesGST/new' },
@@ -83,6 +85,10 @@ const Navbar: React.FC<Props> = (props) => {
   const handleMenuClick = (key: string, path: string) => {
     navigate(path);
   };
+
+  const handleLogoutClick = async () => {
+    await logout()
+  }
 
   const handleProductClick = () => {
     navigate('/products');
@@ -144,6 +150,7 @@ const Navbar: React.FC<Props> = (props) => {
                   display: 'flex',
                   alignItems: 'center',
                   px: 2,
+                  justifyContent: 'flex-start', 
                   borderRadius: '4px',
                   width: '100%'
                 }}
@@ -155,6 +162,26 @@ const Navbar: React.FC<Props> = (props) => {
             </ListItemButton>
           </ListItem>
         ))}
+        <ListItem sx={{ padding: 0 }}>
+        <ListItemButton sx={{ textAlign: 'center' }}>
+              <Button
+                sx={{
+                  bgcolor: '#7b4eff',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  px: 2,
+                  borderRadius: '4px',
+                  width: '100%'
+                }}
+                onClick={() => handleLogoutClick()}
+              >
+                <ExitToAppIcon sx={{ mr: 1 }} />
+                Log Out
+              </Button>
+            </ListItemButton>
+        </ListItem>
       </List>
       <Divider />
 
